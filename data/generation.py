@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import gamma, kv
+from sklearn.gaussian_process.kernels import Matern as skMatern
 
 def get_region_points(s, region_assignments, region_id):
     """
@@ -135,7 +136,7 @@ def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0, nu=1.5):
     return kernel_matrix
     
 # Data generation process
-def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, tau_true=1.0):
+def generate_data(B, n_i, length_scale=1.0, nu=1.5, beta_true=2.0, tau_true=1.0):
     '''
     B: Number of regions
     n_i: Number of locations per region
@@ -171,8 +172,9 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
         x.append(x_i)
         
         # Generate spatially correlated residuals w(s_ij) using Matern kernel
-        K = matern_kernel(s_i, s_i, length_scale, sigma_f, nu) + np.eye(n_i) * 1
-        w_i = np.random.multivariate_normal(np.zeros(n_i), K)  # Generate residuals
+        K = skMatern(nu=nu, length_scale=length_scale)
+        covMat = K(s_i)
+        w_i = np.random.multivariate_normal(np.zeros(n_i), covMat)  # Generate residuals
         w.append(w_i)
         
         # Generate independent errors e_ij
@@ -192,14 +194,15 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
 
     return y, x, w, e, s
 
-# # Example: Generate synthetic data for 9 regions, each with 100 locations
-B = 9
-n_i = 100
- # Generate data
-y, x, w, e, s = generate_data(B, n_i)
+# # # # Example: Generate synthetic data for 9 regions, each with 100 locations
+# B = 9
+# n_i = 20
+# #  # Generate data
+# y, x, w, e, s = generate_data(B, n_i)
 
-# Output some of the generated data
-print("Generated y (observed values):", y)
-print("Generated x (covariates):", x)
-print("Generated w (spatial residuals):", w)
-print("Generated e (errors):", e)
+# # # Output some of the generated data
+# print("Generated y (observed values):", y)
+# print("Generated x (covariates):", x)
+# print("Generated w (spatial residuals):", w)
+# print("Generated e (errors):", e)
+# print("Generated s (spatial locations):", s)
