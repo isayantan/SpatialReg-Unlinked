@@ -1,24 +1,41 @@
 import numpy as np
+from scipy.special import gamma, kv
 
-# Define Matern Kernel (nu=3/2)
-def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0):
+def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0, nu=1.5):
     """
-    Compute the Matern kernel (nu=3/2) between points X and Y.
+    Compute the Matern kernel between points X and Y with smoothness parameter nu.
     
-    X: (n x d) matrix of n points with d dimensions
-    Y: (m x d) matrix of m points with d dimensions
-    length_scale: Length scale parameter
-    sigma_f: Signal variance parameter  
-    
+    Args:
+    X : numpy.ndarray
+        Locations (n_samples, n_features).
+    Y : numpy.ndarray
+        Locations (n_samples, n_features).
+    length_scale : float, optional
+        Length scale parameter, default is 1.0.
+    sigma_f : float, optional
+        Variance of the kernel, default is 1.0.
+    nu : float, optional
+        Smoothness parameter (nu > 0), default is 1.5 (for nu=3/2).
+        
     Returns:
-    (n x m) matrix of the kernel values between points in X and Y
+    numpy.ndarray
+        The kernel matrix (n_samples_X, n_samples_Y).
     """
     # Compute pairwise distances
     dists = np.linalg.norm(X[:, np.newaxis] - Y, axis=2)
     
-    # Matern kernel: nu = 3/2
-    return sigma_f ** 2 * (1 + np.sqrt(3) * dists / length_scale) * np.exp(-np.sqrt(3) * dists / length_scale)
-
+    # Compute the scaling factor for the kernel
+    scale = np.sqrt(2 * nu) * dists / length_scale
+    
+    # Matern kernel formula using the Bessel function (modified)
+    # Compute the constant factor: (2^(1-nu)) / Gamma(nu)
+    const_factor = (2 ** (1 - nu)) / gamma(nu)
+    
+    # Compute the kernel matrix with the Bessel function
+    kernel_matrix = sigma_f**2 * const_factor * (scale ** nu) * kv(nu, scale)
+    
+    return kernel_matrix
+    
 # Data generation process
 def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, beta_true=2.0, tau_true=1.0):
     '''
