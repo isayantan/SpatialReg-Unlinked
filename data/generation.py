@@ -4,6 +4,14 @@ import numpy as np
 def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0):
     """
     Compute the Matern kernel (nu=3/2) between points X and Y.
+    
+    X: (n x d) matrix of n points with d dimensions
+    Y: (m x d) matrix of m points with d dimensions
+    length_scale: Length scale parameter
+    sigma_f: Signal variance parameter  
+    
+    Returns:
+    (n x m) matrix of the kernel values between points in X and Y
     """
     # Compute pairwise distances
     dists = np.linalg.norm(X[:, np.newaxis] - Y, axis=2)
@@ -13,6 +21,23 @@ def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0):
 
 # Data generation process
 def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, beta_true=2.0, tau_true=1.0):
+    '''
+    B: Number of regions
+    n_i: Number of locations per region
+    length_scale: Length scale for the Matern kernel
+    sigma_f: Signal variance for the Matern kernel
+    beta_true: True value of the regression coefficient
+    tau_true: True value of the nugget variance
+    
+    Returns:
+    y: Observed values (n_i x 1) for each region i
+    x: Covariates (n_i x 1) for each region i
+    w: Spatial residuals (n_i x 1) for each region i
+    e: Independent errors (n_i x 1) for each region i
+    s: Spatial locations (n_i x 2) for each region i
+    
+    Note: The spatial residuals w(s_ij) are generated using the Matern kernel.
+    '''
     y = []
     x = []
     w = []
