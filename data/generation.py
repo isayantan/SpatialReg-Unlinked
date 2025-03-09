@@ -156,7 +156,7 @@ def generate_data(B, n_i, length_scale=1.0, nu=1.5, beta_true=2.0, tau_true=1.0)
     e = np.concatenate(e)
     s = np.vstack(s)
 
-    return y, x, w, e, s
+    return y, x, w, e, s, region_assignments
 
 # # # # Example: Generate synthetic data for 9 regions, each with 100 locations
 # B = 9

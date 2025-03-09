@@ -81,9 +81,9 @@ def log_likelihood(params, X, Y, kernel_matrix):
     return -likelihood
 
 # Generate data using the generation.py script
-B = 5  # Number of regions
-n = 10  # Number of locations per region
-y, x, s = generate_data(B, n)
+B = 9  # Number of regions
+n = 100  # Number of locations per region
+y, x, w, e, s, region_assignments = generate_data(B, n)
 
 # Calculate regionwise averages and centroids
 y_average = np.mean(y, axis=1)
