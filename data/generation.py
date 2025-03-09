@@ -67,33 +67,34 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
         s.append(s_i)
         
         # Generate covariates x(s_ij)
-        x_i = np.random.rand(n_i, 1)  # Random covariates
-        x.append(x_i)
+        # x_i = np.random.rand(n_i, 1)  # Random covariates
+        # x.append(x_i)
         
-        # Generate spatially correlated residuals w(s_ij) using Matern kernel
-        K = matern_kernel(s_i, s_i, length_scale, sigma_f, nu) + np.eye(n_i) * 1
-        w_i = np.random.multivariate_normal(np.zeros(n_i), K)  # Generate residuals
-        w.append(w_i)
+        # # Generate spatially correlated residuals w(s_ij) using Matern kernel
+        # K = matern_kernel(s_i, s_i, length_scale, sigma_f, nu) + np.eye(n_i) * 1
+        # w_i = np.random.multivariate_normal(np.zeros(n_i), K)  # Generate residuals
+        # w.append(w_i)
         
-        # Generate independent errors e_ij
-        e_i = np.random.normal(0, tau_true, n_i)
-        e.append(e_i)
+        # # Generate independent errors e_ij
+        # e_i = np.random.normal(0, tau_true, n_i)
+        # e.append(e_i)
         
-        # Generate observed y(s_ij)
-        y_i = x_i * beta_true + w_i + e_i.reshape(-1, 1)
-        y.append(y_i)
+        # # Generate observed y(s_ij)
+        # y_i = x_i * beta_true + w_i + e_i.reshape(-1, 1)
+        # y.append(y_i)
     
-    return np.array(y), np.array(x), np.array(w), np.array(e), np.array(s)
+    # return np.array(y), np.array(x), np.array(w), np.array(e), np.array(s)
+    return np.array(s)
 
-# Example: Generate synthetic data for 3 regions, each with 10 locations
-B = 3  # Number of regions
-n_i = 100  # Number of locations per region
+# # Example: Generate synthetic data for 3 regions, each with 10 locations
+# B = 3  # Number of regions
+# n_i = 100  # Number of locations per region
 
-# Generate data
-y, x, w, e, s = generate_data(B, n_i)
+# # Generate data
+# y, x, w, e, s = generate_data(B, n_i)
 
-# Output some of the generated data
-print("Generated y (observed values):", y)
-print("Generated x (covariates):", x)
-print("Generated w (spatial residuals):", w)
-print("Generated e (errors):", e)
+# # Output some of the generated data
+# print("Generated y (observed values):", y)
+# print("Generated x (covariates):", x)
+# print("Generated w (spatial residuals):", w)
+# print("Generated e (errors):", e)
