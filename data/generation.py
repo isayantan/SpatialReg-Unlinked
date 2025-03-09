@@ -170,3 +170,33 @@ def generate_data(B, n_i, length_scale=1.0, nu=1.5, beta_true=2.0, tau_true=1.0)
 # print("Generated w (spatial residuals):", w)
 # print("Generated e (errors):", e)
 # print("Generated s (spatial locations):", s)
+
+
+# # Print the shape of s and the first few points
+# print(f"Shape of s: {s.shape}")
+# print(f"First few points of s: {s[:5]}")
+
+# # Plot the grid and points
+# grid_size = int(np.ceil(np.sqrt(B)))
+
+# # Create the plot
+# plt.figure(figsize=(8, 8))
+
+# # Plot the grid
+# x_divisions = np.linspace(0, 1, grid_size + 1)
+# y_divisions = np.linspace(0, 1, grid_size + 1)
+# for x in x_divisions:
+#     plt.axvline(x=x, color='k', linestyle='--', alpha=0.5)
+# for y in y_divisions:
+#     plt.axhline(y=y, color='k', linestyle='--', alpha=0.5)
+
+# # Plot the points
+# plt.scatter(s[:, 0], s[:, 1], c=region_assignments, cmap='tab10', marker='o', edgecolor='k', s=30)
+
+# # Title and labels
+# plt.title("Partitioned Grid with Points")
+# plt.xlabel("X-coordinate")
+# plt.ylabel("Y-coordinate")
+# plt.colorbar(label='Region ID')
+
+# plt.show()
