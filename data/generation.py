@@ -98,42 +98,6 @@ def partition_domain_into_regions(B, n_i):
     region_assignments = np.array(region_assignments)  # Region assignments for each point
     
     return s, region_assignments
-
-
-def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0, nu=1.5):
-    """
-    Compute the Matern kernel between points X and Y with smoothness parameter nu.
-    
-    Args:
-    X : numpy.ndarray
-        Locations (n_samples, n_features).
-    Y : numpy.ndarray
-        Locations (n_samples, n_features).
-    length_scale : float, optional
-        Length scale parameter, default is 1.0.
-    sigma_f : float, optional
-        Variance of the kernel, default is 1.0.
-    nu : float, optional
-        Smoothness parameter (nu > 0), default is 1.5 (for nu=3/2).
-        
-    Returns:
-    numpy.ndarray
-        The kernel matrix (n_samples_X, n_samples_Y).
-    """
-    # Compute pairwise distances
-    dists = np.linalg.norm(X[:, np.newaxis] - Y, axis=2)
-    
-    # Compute the scaling factor for the kernel
-    scale = np.sqrt(2 * nu) * dists / length_scale
-    
-    # Matern kernel formula using the Bessel function (modified)
-    # Compute the constant factor: (2^(1-nu)) / Gamma(nu)
-    const_factor = (2 ** (1 - nu)) / gamma(nu)
-    
-    # Compute the kernel matrix with the Bessel function
-    kernel_matrix = sigma_f**2 * const_factor * (scale ** nu) * kv(nu, scale)
-    
-    return kernel_matrix
     
 # Data generation process
 def generate_data(B, n_i, length_scale=1.0, nu=1.5, beta_true=2.0, tau_true=1.0):
