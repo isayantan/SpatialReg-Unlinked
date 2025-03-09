@@ -160,14 +160,11 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
     s = []
 
     s, region_assignments = partition_domain_into_regions(B, n_i)
-
     
-    
+    # Loop through each region and generate data
     for i in range(B):
         # Generate random spatial locations for area i
-        s_i= get_region_points(s, region_assignments, i)
-        #s_i = np.random.rand(n_i, 2)  # 2D coordinates for simplicity
-        s.append(s_i)
+        s_i = get_region_points(s, region_assignments, i)
         
         # Generate covariates x(s_ij)
         x_i = np.random.rand(n_i, 1)  # Random covariates
@@ -179,15 +176,21 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
         w.append(w_i)
         
         # Generate independent errors e_ij
-        e_i = np.random.normal(0, tau_true, n_i)
+        e_i = np.random.normal(0, tau_true, n_i)  # Independent noise
         e.append(e_i)
         
-        # Generate observed y(s_ij)
-        y_i = x_i * beta_true + w_i + e_i.reshape(-1, 1)
+        # Generate outcomes y_ij using the model
+        y_i = beta_true * x_i.flatten() + w_i.flatten() + e_i
         y.append(y_i)
     
-    return np.array(y), np.array(x), np.array(w), np.array(e), np.array(s)
-    # return np.array(s)
+    # Stack all the outputs into arrays
+    y = np.concatenate(y)
+    x = np.concatenate(x)
+    w = np.concatenate(w)
+    e = np.concatenate(e)
+    s = np.vstack(s)
+
+    return y, x, w, e, s
 
 # # Example: Generate synthetic data for 9 regions, each with 100 locations
 B = 9
