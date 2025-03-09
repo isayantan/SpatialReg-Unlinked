@@ -37,7 +37,7 @@ def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0, nu=1.5):
     return kernel_matrix
     
 # Data generation process
-def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, beta_true=2.0, tau_true=1.0):
+def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, tau_true=1.0):
     '''
     B: Number of regions
     n_i: Number of locations per region
@@ -71,7 +71,7 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, beta_true=2.0, tau_true
         x.append(x_i)
         
         # Generate spatially correlated residuals w(s_ij) using Matern kernel
-        K = matern_kernel(s_i, s_i, length_scale, sigma_f) + tau_true ** 2 * np.eye(n_i)  # Add noise term
+        K = matern_kernel(s_i, s_i, length_scale, sigma_f, nu) + np.eye(n_i) * 1
         w_i = np.random.multivariate_normal(np.zeros(n_i), K)  # Generate residuals
         w.append(w_i)
         
@@ -83,11 +83,11 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, beta_true=2.0, tau_true
         y_i = x_i * beta_true + w_i + e_i.reshape(-1, 1)
         y.append(y_i)
     
-    return np.array(y), np.array(x), np.array(w), np.array(e), s
+    return np.array(y), np.array(x), np.array(w), np.array(e), np.array(s)
 
 # Example: Generate synthetic data for 3 regions, each with 10 locations
 B = 3  # Number of regions
-n_i = 10  # Number of locations per region
+n_i = 100  # Number of locations per region
 
 # Generate data
 y, x, w, e, s = generate_data(B, n_i)
