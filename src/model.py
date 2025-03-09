@@ -3,6 +3,51 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 from scipy.optimize import minimize
 from generation import generate_data  # Import the generate_data function from generation.py
+from scipy.optimize import linear_sum_assignment
+from scipy.spatial.distance import cdist
+
+# Assume the generate_data and other necessary methods like matern_kernel, nngp_kernel are defined already.
+
+# Step 1: Order the locations initially (e.g., based on centroid)
+def order_locations(s):
+    """
+    Orders the locations based on some criterion, e.g., by spatial coordinates.
+    This function returns the ordered locations and the corresponding indices.
+    """
+    # Assuming s is a matrix where each row corresponds to a location's spatial coordinate.
+    order = np.argsort(s[:, 0])  # Sorting based on x-coordinate (you can change this to y or any other rule)
+    return s[order], order
+
+# Step 2: Generate residuals w_hat (y - x*beta)
+def compute_residuals(x, y, beta_hat):
+    """
+    Compute the residuals w_hat as the difference between observed and predicted y values.
+    """
+    y_pred = np.dot(x, beta_hat)  # Predicted y values
+    w_hat = y - y_pred  # Residuals
+    return w_hat
+
+# Step 3: Generate pseudo-spatial errors w_tilde using GP with kernel (K_theta + tau^2)
+def generate_gp_residuals(s_ordered, tau_hat, theta_hat, matern_kernel):
+    """
+    Generate pseudo-residuals w_tilde using a Gaussian Process with the given kernel and parameters.
+    """
+    K_theta = matern_kernel(s_ordered, s_ordered, length_scale=theta_hat[0], sigma_f=theta_hat[1], nu=theta_hat[2])
+    noise_matrix = np.eye(len(s_ordered)) * tau_hat**2  # Adding tau^2 to the diagonal
+    K_total = K_theta + noise_matrix  # Covariance matrix
+    w_tilde = np.random.multivariate_normal(mean=np.zeros(len(s_ordered)), cov=K_total)
+    return w_tilde
+
+# Step 4: Hungarian algorithm to match w_hat to w_tilde
+def hungarian_matching(w_hat, w_tilde):
+    """
+    Use the Hungarian algorithm to match w_hat to w_tilde.
+    Returns the matched indices.
+    """
+    cost_matrix = cdist(w_hat.reshape(-1, 1), w_tilde.reshape(-1, 1), metric='euclidean')  # Cost matrix
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)  # Solve assignment problem
+    return row_ind, col_ind
+
 
 # Matern kernel with Bessel function
 def matern_kernel(X, Y, length_scale=1.0, sigma_f=1.0, nu=1.5):
@@ -61,3 +106,34 @@ theta_hat = result.x[2:]
 print(f"Estimated beta: {beta_hat}")
 print(f"Estimated tau^2: {tau2_hat}")
 print(f"Estimated theta: {theta_hat}")
+
+
+# Iterate over the regions and perform matching
+for i in range(B):
+    # Extract region data
+    x_region = x[i]
+    y_region = y[i]
+    s_region = s[i]
+
+    # Step 3: Use the matched indices to reorder y and x
+    y_matched = y_region[col_ind]
+    x_matched = x_region[col_ind]
+    
+    # Step 4: Compute residuals for the matched pairs
+    w_hat = compute_residuals(x_matched, y_matched, beta_hat)
+    
+    
+    # Step 1: Compute residuals w_hat (y - x*beta)
+    w_hat = compute_residuals(x_region, y_region, beta_hat)
+    
+    # Step 2: Generate pseudo-spatial errors w_tilde using GP
+    s_ordered_region, order_indices_region = order_locations(s_region)
+    w_tilde = generate_gp_residuals(s_ordered_region, tau_hat, theta_hat, matern_kernel)
+    
+    # Step 3: Match residuals w_hat to pseudo-residuals w_tilde using Hungarian algorithm
+    row_ind, col_ind = hungarian_matching(w_hat, w_tilde)
+    
+    # Store matched locations
+    matched_locations = order_indices_region[col_ind]  # Matched location indices for this region
+    print(f"Region {i+1}: Matched locations (true y to predicted y) - {matched_locations}")
+
