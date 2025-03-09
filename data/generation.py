@@ -190,6 +190,8 @@ def generate_data(B, n_i, length_scale=1.0, sigma_f=1.0, nu=1.5, beta_true=2.0, 
     # return np.array(s)
 
 # # Example: Generate synthetic data for 9 regions, each with 100 locations
+B = 9
+n_i = 100
  # Generate data
 y, x, w, e, s = generate_data(B, n_i)
 
