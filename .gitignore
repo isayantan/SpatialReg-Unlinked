@@ -1,5 +1,5 @@
 # ignore trial ipynb file
-notebooks/trial.ipynb
+# notebooks/trial.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
