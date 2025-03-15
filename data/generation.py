@@ -1,6 +1,11 @@
 import numpy as np
+import random
 from scipy.special import gamma, kv
 from sklearn.gaussian_process.kernels import Matern as skMatern
+import torch
+import torch.special  # Contains Bessel function of the second kind (kv)
+
+
 
 def get_region_points(s, region_assignments, region_id):
     """
@@ -98,63 +103,56 @@ def partition_domain_into_regions(B, n_i):
     region_assignments = np.array(region_assignments)  # Region assignments for each point
     
     return s, region_assignments
-    
-# Data generation process
-def generate_data(B, n_i, length_scale=1.0, nu=1.5, beta_true=2.0, tau_true=1.0):
-    '''
-    B: Number of regions
-    n_i: Number of locations per region
-    length_scale: Length scale for the Matern kernel
-    sigma_f: Signal variance for the Matern kernel
-    beta_true: True value of the regression coefficient
-    tau_true: True value of the nugget variance
-    
-    Returns:
-    y: Observed values (n_i x 1) for each region i
-    x: Covariates (n_i x 1) for each region i
-    w: Spatial residuals (n_i x 1) for each region i
-    e: Independent errors (n_i x 1) for each region i
-    s: Spatial locations (n_i x 2) for each region i
-    
-    Note: The spatial residuals w(s_ij) are generated using the Matern kernel.
-    '''
-    y = []
-    x = []
-    w = []
-    e = []
-    s = []
+ 
+ 
 
+def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tau_true,seed=42):
+    """
+    Generates spatial data for a full region first, then assigns regions.
+
+    Parameters:
+    -----------
+    B : int
+        Number of regions.
+    n_i : int
+        Number of points per region.
+    sigmasq : float
+        Variance parameter for the Matérn kernel.
+    length_scale : float
+        Spatial correlation length parameter.
+    nu : float
+        Smoothness parameter for Matérn covariance.
+    beta_true : float
+        Coefficient for the covariate.
+    tau_true : float
+        Standard deviation of independent noise.
+
+    Returns:
+    --------
+    y, x, w, e, s, region_assignments : np.ndarrays
+        Outcome, covariates, spatial residuals, noise, locations, and region assignments.
+    """
+    np.random.seed(seed)  # Set seed for reproducibility
+    random.seed(seed)  # Set seed for reproducibility
+    
+    N = B * n_i  # Total number of spatial locations
+    
+    # Generate spatial locations s
     s, region_assignments = partition_domain_into_regions(B, n_i)
-    
-    # Loop through each region and generate data
-    for i in range(B):
-        # Generate random spatial locations for area i
-        s_i = get_region_points(s, region_assignments, i)
-        
-        # Generate covariates x(s_ij)
-        x_i = np.random.rand(n_i, 1)  # Random covariates
-        x.append(x_i)
-        
-        # Generate spatially correlated residuals w(s_ij) using Matern kernel
-        K = skMatern(nu=nu, length_scale=length_scale)
-        covMat = K(s_i)
-        w_i = np.random.multivariate_normal(np.zeros(n_i), covMat)  # Generate residuals
-        w.append(w_i)
-        
-        # Generate independent errors e_ij
-        e_i = np.random.normal(0, tau_true, n_i)  # Independent noise
-        e.append(e_i)
-        
-        # Generate outcomes y_ij using the model
-        y_i = beta_true * x_i.flatten() + w_i.flatten() + e_i
-        y.append(y_i)
-    
-    # Stack all the outputs into arrays
-    y = np.concatenate(y)
-    x = np.concatenate(x)
-    w = np.concatenate(w)
-    e = np.concatenate(e)
-    s = np.vstack(s)
+
+    # Generate covariates x(s)
+    x = np.random.rand(N, 1)  # Covariates for all locations
+
+    # Compute spatially correlated residuals w(s) using Matérn kernel
+    matern_kernel = sigmasq * skMatern(nu=nu, length_scale=length_scale)
+    K = matern_kernel(s)  # Full covariance matrix
+    w = np.random.multivariate_normal(np.zeros(N), K)  # Residuals
+
+    # Generate independent errors e(s)
+    e = np.random.normal(0, tau_true, N)  # Independent noise
+
+    # Generate outcomes y(s)
+    y = beta_true * x.flatten() + w + e  # Outcome variable
 
     return y, x, w, e, s, region_assignments
 
