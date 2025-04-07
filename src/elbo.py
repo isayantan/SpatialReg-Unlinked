@@ -27,11 +27,13 @@ class vi_piX(nn.Module):
         # sample piX
         torch.manual_seed(42)  # Set seed for reproducibility
         sampled_piX = torch.zeros(n_sample, self.n_locations, self.n_locations)
+
+        # calculate nearest doubly stochastic matrix to MX once
+        log_MX = torch.log_softmax(self.MX, dim=1)
+        log_MX_tilde = sinkhorn_logspace(log_MX, niters=10)
+        MX_tilde = torch.exp(log_MX_tilde)
         
         for i in range(n_sample):
-            log_MX = torch.log_softmax(self.MX, dim=1)
-            log_MX_tilde = sinkhorn_logspace(log_MX, niters=10)
-            MX_tilde = torch.exp(log_MX_tilde)
             Phi = MX_tilde + self.VX * torch.randn(self.n_locations, self.n_locations)
             sampled_piX[i] = tau_X * Phi + (1 - tau_X) * hungarian(-Phi)  # Exponentiate to get piX
         
