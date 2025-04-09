@@ -27,13 +27,11 @@ class vi_piX(nn.Module):
         # sample piX
         torch.manual_seed(42)  # Set seed for reproducibility
         sampled_piX = torch.zeros(n_sample, self.n_locations, self.n_locations)
-
-        # calculate nearest doubly stochastic matrix to MX once
-        log_MX = torch.log_softmax(self.MX, dim=1)
-        log_MX_tilde = sinkhorn_logspace(log_MX, niters=10)
-        MX_tilde = torch.exp(log_MX_tilde)
         
         for i in range(n_sample):
+            log_MX = torch.log_softmax(self.MX, dim=1)
+            log_MX_tilde = sinkhorn_logspace(log_MX, niters=10)
+            MX_tilde = torch.exp(log_MX_tilde)
             Phi = MX_tilde + self.VX * torch.randn(self.n_locations, self.n_locations)
             sampled_piX[i] = tau_X * Phi + (1 - tau_X) * hungarian(-Phi)  # Exponentiate to get piX
         
@@ -66,6 +64,51 @@ class vi_piX(nn.Module):
             # Update ELBO
             elbo += total_term1 + total_log_term + neg_log_tauX - self.VX.sum()
         elbo = elbo / n_sample 
+        
+        # B, d = X.shape
+
+        # # First summation term
+        # term1 = 0.
+        # for i in range(B):
+        #     Y_i = Y[i]                    # (d,)
+        #     X_i = X[i]                    # (d,)
+        #     mu_Wi = mu_W[i]              # (d,)
+
+        #     # (1) 2 * Y_i^T * pi_x * X_i * mu
+        #     part1 = 2 * mu_lambda_beta * torch.dot(Y_i, pi_x @ X_i)
+
+        #     # (2) (mu^2 + sigma^2) * X_i^T * pi_x^T * pi_x * X_i
+        #     temp = pi_x @ X_i            # (d,)
+        #     part2 = (mu_lambda_beta ** 2 + sigma2_lambda_beta) * temp.dot(temp)
+
+        #     # (3) 2 * mu * X_i^T * pi_x^T * M_star_S * mu_Wi
+        #     part3 = 2 * mu_lambda_beta * (X_i @ pi_x.T @ M_star_S @ mu_Wi)
+
+        #     term1 += part1 + part2 + part3
+
+        # coeff = -lambda_a2 / (2 * lambda_b2)
+        # total_term1 = coeff * term1
+
+        # # Second summation: over entries of pi_x
+        # x_mk = pi_x  # (d, d)
+        # x_mk_squared = x_mk ** 2
+        # x_mk_minus1_squared = (x_mk - 1) ** 2
+
+        # # log[exp(-x^2/2η^2) + exp(-(x-1)^2/2η^2)]
+        # exponent1 = -x_mk_squared / (2 * eta_x**2)
+        # exponent2 = -x_mk_minus1_squared / (2 * eta_x**2)
+        # log_term = torch.log(torch.exp(exponent1) + torch.exp(exponent2))
+
+        # const = -0.5 * math.log(2 * math.pi * eta_x ** 2)
+        # total_log_term = (const + log_term).sum()  # scalar
+
+        # # Final terms
+        # n = d
+        # neg_log_tauX = -n ** 2 * torch.log(torch.tensor(tau_X))
+
+        # final_obj = total_term1 + total_log_term + neg_log_tauX - V_X_entropy
+        
+        
         return -elbo
     
     
