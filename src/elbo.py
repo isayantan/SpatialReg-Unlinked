@@ -139,8 +139,7 @@ class vi_piX(nn.Module):
         torch.autograd.set_detect_anomaly(True)
 
         # sample piX
-        torch.manual_seed(42)  #set seed for stochastic optimzation
-        sampled_piX = torch.zeros(n_sample, self.n_locations, self.n_locations)
+        torch.manual_seed(100)  #set seed for stochastic optimzation
 
         # calculate nearest doubly stochastic matrix to MX once
         log_MX = self.MX
@@ -155,8 +154,7 @@ class vi_piX(nn.Module):
         for i in range(n_sample):
             Phi = MX_tilde + torch.sqrt(torch.exp(self.VX)) * torch.randn(self.n_locations, self.n_locations)
             #current_piX = tau_X * Phi + (1 - tau_X) * hungarian_algorithm(-Phi)
-            current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_to_perm((Phi - 0.95*Phi.min()).detach().numpy()), dtype=torch.float) # Making sure Phi has positive entries, Access the current sample of piX
-        
+            current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_to_perm((Phi - 0.95*Phi.min()).detach().numpy()), dtype=torch.float) # Access the current sample of piX
 
             # Computation for all regions
             term1 = 0.
@@ -184,8 +182,8 @@ class vi_piX(nn.Module):
             x_mk_squared = current_piX.pow(2)
             x_mk_minus1_squared = (current_piX - 1).pow(2)
 
-            exponent1 = -x_mk_squared / (2 * eta_X**2)
-            exponent2 = -x_mk_minus1_squared / (2 * eta_X**2)
+            exponent1 = -x_mk_squared / (2 * eta_X_sq)
+            exponent2 = -x_mk_minus1_squared / (2 * eta_X_sq)
 
             # Stable log-sum-exp
             log_term = -0.5 * torch.logsumexp(torch.stack([exponent1, exponent2]), dim=0)
@@ -195,7 +193,7 @@ class vi_piX(nn.Module):
             neg_log_tauX = self.n_locations ** 2 * torch.log(torch.tensor(tau_X))
 
             # Update ELBO
-            elbo += total_term1 + total_log_term + neg_log_tauX + 2 * self.VX.sum()
+            elbo += total_term1 + total_log_term + neg_log_tauX + 0.5 * self.VX.sum()
             #elbo += total_term1 + neg_log_tauX + 2 * self.VX.sum()
 
         
