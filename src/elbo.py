@@ -132,7 +132,7 @@ class vi_piX(nn.Module):
             
     def forward(self, Y, X, mu_lambda_beta,
                 sigmasq_lambda_beta, M_S_star, mu_W,
-                eta_X, lambda_a2, lambda_b2, 
+                eta_X_sq, lambda_a2, lambda_b2, 
                 tau_X = 0.1, n_sample = 100):
         
         # Enable anomaly detection
