@@ -124,16 +124,16 @@ def trainer(n_iter,
         
         
         # Update piX
-        optimizer_piX.zero_grad()
-        loss_piX = model()
-        loss_piX.backward()
-        optimizer_piX.step()
+        # optimizer_piX.zero_grad()
+        # loss_piX = model()
+        # loss_piX.backward()
+        # optimizer_piX.step()
         
-        # Update other parameters
+        # # Update other parameters
         
-        # Update piS
-        optimizer_piS.zero_grad()        
-        loss_piS = model()
-        loss_piS.backward()
-        optimizer_piS.step()
+        # # Update piS
+        # optimizer_piS.zero_grad()        
+        # loss_piS = model()
+        # loss_piS.backward()
+        # optimizer_piS.step()
         
