@@ -1,4 +1,6 @@
 import torch
+import torch.optim as optim
+from elbo import vi_piX
 
 def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb):
     """
@@ -43,7 +45,11 @@ def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb):
 def trainer(n_iter,
             n_blocks,
             n_locations, 
-            X, Y, Dist):
+            X, Y, Dist, 
+            n_steps=10, 
+            n_phi_samples=100,
+            n_piX_sample=10, 
+            tau_X= 0.1):
     
     # Prior hyperparameters
     a1 = 100
@@ -70,6 +76,12 @@ def trainer(n_iter,
     lambda_b1 = 0.5
     lambda_a2 = n_blocks * n_locations * 0.5 + a2
     lambda_b2 = 0.5
+
+    # Initialize the model
+    model_piX = vi_piX(n_locations=n_locations)
+
+    # Define the optimizer
+    optimizer = optim.AdamW(model_piX.parameters(), lr=0.1, weight_decay=1e-2)    
      
     for iter in range(n_iter):
         # compute sigmasq_lambda_beta
@@ -105,7 +117,6 @@ def trainer(n_iter,
             
         # compute Phi 
         # Generate phi from a uniform distribution between 0 and max(Dist)
-        n_phi_samples = 100
         phi_samples = torch.rand(n_phi_samples) * torch.max(Dist)
         # Calculate q_phi for each phi_sample
         q_phi_values = torch.tensor([compute_q_phi(phi, Dist, Sigma_W, mu_W, lambda_a1, lambda_b1) for phi in phi_samples])
@@ -122,6 +133,37 @@ def trainer(n_iter,
         # Compute the mean of R(phi)^-1
         mean_Rphi_inv = Rphi_inv_sum
         
+        
+
+        
+
+        # Minimize the model
+        for step in range(n_steps):
+            optimizer.zero_grad()  # Clear gradients
+            loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample)
+            #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
+            loss.backward()  # Compute gradients
+            optimizer.step()  # Update parameters
+
+            # Print loss every 100 steps
+            if step % 1 == 0:
+                print(f"Step {step}, Loss: {loss.item()}")
+                print("Current MX:")
+                print(torch.exp(model_piX.MX.data))
+
+                print("\nCurrent VX:")
+                print(torch.exp(model_piX.VX.data))
+                
+                # Stopping rule: Stop if the loss change is below a threshold
+                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                    print(f"Stopping early at step {step} due to minimal loss change.")
+                    break
+                prev_loss = loss.item()
+
+
+    
+        
+
         
         # Update piX
         # optimizer_piX.zero_grad()

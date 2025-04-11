@@ -133,7 +133,7 @@ class vi_piX(nn.Module):
     def forward(self, Y, X, mu_lambda_beta,
                 sigmasq_lambda_beta, M_S_star, mu_W,
                 eta_X_sq, lambda_a2, lambda_b2, 
-                tau_X = 0.1, n_sample = 100):
+                tau_X = 0.1, n_piX_sample = 100):
         
         # Enable anomaly detection
         torch.autograd.set_detect_anomaly(True)
@@ -151,7 +151,7 @@ class vi_piX(nn.Module):
         # Compute the ELBO
         B = Y.shape[0]
         elbo = 0.0
-        for i in range(n_sample):
+        for i in range(n_piX_sample):
             Phi = MX_tilde + torch.sqrt(torch.exp(self.VX)) * torch.randn(self.n_locations, self.n_locations)
             #current_piX = tau_X * Phi + (1 - tau_X) * hungarian_algorithm(-Phi)
             current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_to_perm((Phi - 0.95*Phi.min()).detach().numpy()), dtype=torch.float) # Access the current sample of piX
@@ -197,5 +197,5 @@ class vi_piX(nn.Module):
             #elbo += total_term1 + neg_log_tauX + 2 * self.VX.sum()
 
         
-        elbo = elbo / n_sample 
+        elbo = elbo / n_piX_sample 
         return -elbo
