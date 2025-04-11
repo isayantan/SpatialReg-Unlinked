@@ -1,6 +1,6 @@
 import torch
 import torch.optim as optim
-from elbo import vi_piX
+from elbo import vi_piX, vi_piS
 
 def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb):
     """
@@ -49,7 +49,8 @@ def trainer(n_iter,
             n_steps=10, 
             n_phi_samples=100,
             n_piX_sample=10, 
-            tau_X= 0.1):
+            n_piS_sample=10,
+            tau_X= 0.1, tau_S= 0.1):
     
     # Prior hyperparameters
     a1 = 100
@@ -66,7 +67,6 @@ def trainer(n_iter,
     sigmasq_lambda_beta = 0.1
     mu_W = torch.zeros(n_blocks, n_locations)
     Sigma_W = torch.eye(n_blocks * n_locations) 
-    sigmasq = 0.1
     mean_Rphi_inv = torch.eye(n_locations * n_blocks)
     M_S_star = (1/n_locations) * torch.ones(n_locations, n_locations)
     M_X_star = (1/n_locations) * torch.ones(n_locations, n_locations)
@@ -79,9 +79,13 @@ def trainer(n_iter,
 
     # Initialize the model
     model_piX = vi_piX(n_locations=n_locations)
+    model_piS = vi_piS(n_locations=n_locations)
 
     # Define the optimizer
-    optimizer = optim.AdamW(model_piX.parameters(), lr=0.1, weight_decay=1e-2)    
+    optimizer_piX = optim.AdamW(model_piX.parameters(), lr=0.1, weight_decay=1e-2)  
+    optimizer_piS = optim.AdamW(model_piS.parameters(), lr=0.1, weight_decay=1e-2)
+
+
      
     for iter in range(n_iter):
         # compute sigmasq_lambda_beta
@@ -133,17 +137,14 @@ def trainer(n_iter,
         # Compute the mean of R(phi)^-1
         mean_Rphi_inv = Rphi_inv_sum
         
-        
 
-        
-
-        # Minimize the model
+        # Minimize the model for piX
         for step in range(n_steps):
-            optimizer.zero_grad()  # Clear gradients
+            optimizer_piX.zero_grad()  # Clear gradients
             loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample)
             #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
             loss.backward()  # Compute gradients
-            optimizer.step()  # Update parameters
+            optimizer_piX.step()  # Update parameters
 
             # Print loss every 100 steps
             if step % 1 == 0:
@@ -159,23 +160,37 @@ def trainer(n_iter,
                     print(f"Stopping early at step {step} due to minimal loss change.")
                     break
                 prev_loss = loss.item()
+        
+        # Extract the updated parameters
+        M_X_star = model_piX.current_M_X_star.data 
+        V_X_star = model_piX.current_V_X_star.data
 
+        # Minimize the model for piS
+        for step in range(n_steps):
+            optimizer_piS.zero_grad()  # Clear gradients
+            loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
+                            mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample)
+            loss.backward()  # Compute gradients
+            optimizer_piS.step()  # Update parameters
 
+            # Print loss every step (or change 1 to 100 if you want sparser output)
+            if step % 1 == 0:
+                print(f"Step {step}, Loss: {loss.item()}")
+                print("Current MS:")
+                print(torch.exp(model_piS.MS.data))
+
+                print("\nCurrent VS:")
+                print(torch.exp(model_piS.VS.data))
+
+                # Stopping rule: Stop if the loss change is below a threshold
+                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                    print(f"Stopping early at step {step} due to minimal loss change.")
+                    break
+                prev_loss = loss.item()
+
+        # Extract the updated parameters
+        M_S_star = model_piS.current_M_S_star.data
+        V_S_star = model_piS.current_V_S_star.data
     
-        
-
-        
-        # Update piX
-        # optimizer_piX.zero_grad()
-        # loss_piX = model()
-        # loss_piX.backward()
-        # optimizer_piX.step()
-        
-        # # Update other parameters
-        
-        # # Update piS
-        # optimizer_piS.zero_grad()        
-        # loss_piS = model()
-        # loss_piS.backward()
-        # optimizer_piS.step()
+    return mu_W, Sigma_W, M_X_star, V_X_star, M_S_star, V_S_star, mu_lambda_beta, sigmasq_lambda_beta, lambda_a1, lambda_b1, lambda_a2, lambda_b2   
         
