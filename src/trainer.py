@@ -81,7 +81,7 @@ def trainer(n_iter,
             n_locations, 
             X, Y, Dist, 
             n_steps=10, 
-            phi_init=0.3,
+            phi_init=3,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
@@ -132,11 +132,13 @@ def trainer(n_iter,
     for iter in tqdm(range(n_iter)):
         # compute sigmasq_lambda_beta
         X_V_X_star_X = torch.einsum('bi,ij,bj->b', X, V_X_star, X).sum()
+        print("Norm of X_V_X_star_X:", torch.norm(X_V_X_star_X))
         sigmasq_lambda_beta = 1.0 / (((lambda_a2 * X_V_X_star_X) / lambda_b2) + (1.0 / sigmasq_beta))
         
         # compute mu_lambda_beta
         residual = Y - (M_S_star @ mu_W.T).T
         X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
+        print("Norm of X_M_X_star_residual:", torch.norm(X_M_X_star_residual))
         mu_lambda_beta = sigmasq_lambda_beta * X_M_X_star_residual
         
         # lambda_b1
@@ -155,12 +157,13 @@ def trainer(n_iter,
         term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
         term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
         # Sum the terms and take the inverse
-        Sigma_W = torch.linalg.inv(nearest_pd_torch(term1 + term2))
+        Sigma_W = torch.linalg.pinv(term1 + term2, rtol = 1e-3)
         
         # compute mu_W        
+        print("Norm of residual2:", torch.norm((M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()))
+
         mu_W = (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
 
-        
         # print("mean_Rphi_inv:", mean_Rphi_inv)
         # print("mu_W:", mu_W)
         # print("V_S_star:", V_S_star)
@@ -173,9 +176,9 @@ def trainer(n_iter,
         # print("Any NaNs in mu_lambda_beta?", torch.isnan(mu_lambda_beta).any())    
 
             
-        # compute Phi 
+        #compute Phi 
         # Generate phi from a uniform distribution between 0 and max(Dist)
-        phi_samples = torch.rand(n_phi_samples) * torch.max(Dist)
+        phi_samples = torch.rand(n_phi_samples) * (10 - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
         # Calculate q_phi for each phi_sample
         q_phi_values = torch.tensor([compute_q_phi(phi, Dist, Sigma_W, mu_W, lambda_a1, lambda_b1) for phi in phi_samples])
 
@@ -185,11 +188,12 @@ def trainer(n_iter,
         Rphi_inv_sum = torch.zeros_like(Dist)
         for i in range(n_phi_samples):
             # Compute the weighted sum of phi_samples
-            Rphi_inv = torch.linalg.inv(nearest_pd_torch(torch.exp(-phi_samples[i] * Dist)))
+            Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist), rtol=1e-3)
             Rphi_inv_sum += importance_weights[i] * Rphi_inv
             
         # Compute the mean of R(phi)^-1
-        mean_Rphi_inv = Rphi_inv_sum
+        # make this stable
+        mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
         # print("mean_Rphi_inv:", mean_Rphi_inv)
 
         
@@ -252,7 +256,22 @@ def trainer(n_iter,
         # Extract the updated parameters
         M_S_star = model_piS.current_M_S_star.clone().data
         V_S_star = model_piS.current_V_S_star.clone().data
-        print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_b2: {lambda_b2:.4f}")
+        print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
+        norm_M_X_star = torch.norm(M_X_star)
+        norm_V_X_star = torch.norm(V_X_star)
+        norm_M_S_star = torch.norm(M_S_star)
+        norm_V_S_star = torch.norm(V_S_star)
+        norm_mean_Rphi_inv = torch.norm(mean_Rphi_inv)
+
+        print(f"‣ ||M_X_star||: {norm_M_X_star:.4f}, ||V_X_star||: {norm_V_X_star:.4f}")
+        print(f"‣ ||M_S_star||: {norm_M_S_star:.4f}, ||V_S_star||: {norm_V_S_star:.4f}")
+        print(f"‣ ||E[R(ϕ)]⁻¹||: {norm_mean_Rphi_inv:.4f}")
+        print(f" ‣ ||Sigma_W||: {torch.norm(Sigma_W):.4f}")
+        print(f" ‣ cond(Sigma_W): {torch.linalg.cond(Sigma_W):.4e}")
+        print(f" ‣ cond(Rphi_inv): {torch.linalg.cond(mean_Rphi_inv):.4e}")
+        print(f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
+
+        
         # print(f"Iteration {iter+1}/{n_iter} completed.")
         # print("mu_lambda_beta:", mu_lambda_beta)
         # print("sigmasq_lambda_beta:", sigmasq_lambda_beta)
