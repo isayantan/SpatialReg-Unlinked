@@ -82,6 +82,7 @@ def trainer(n_iter,
             X, Y, Dist, 
             n_steps=10, 
             phi_init=3,
+            phi_prior_ub= 10,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
@@ -139,7 +140,7 @@ def trainer(n_iter,
         residual = Y - (M_S_star @ mu_W.T).T
         X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
         print("Norm of X_M_X_star_residual:", torch.norm(X_M_X_star_residual))
-        mu_lambda_beta = sigmasq_lambda_beta * X_M_X_star_residual
+        mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
         
         # lambda_b1
         lambda_b1 = 0.5 * (torch.trace(mean_Rphi_inv @ Sigma_W) + mu_W.flatten().T @ mean_Rphi_inv @ mu_W.flatten()) + b1
@@ -162,7 +163,7 @@ def trainer(n_iter,
         # compute mu_W        
         print("Norm of residual2:", torch.norm((M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()))
 
-        mu_W = (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
+        mu_W = (lambda_a2 / lambda_b2) * (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
 
         # print("mean_Rphi_inv:", mean_Rphi_inv)
         # print("mu_W:", mu_W)
@@ -178,7 +179,7 @@ def trainer(n_iter,
             
         #compute Phi 
         # Generate phi from a uniform distribution between 0 and max(Dist)
-        phi_samples = torch.rand(n_phi_samples) * (10 - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
+        phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
         # Calculate q_phi for each phi_sample
         q_phi_values = torch.tensor([compute_q_phi(phi, Dist, Sigma_W, mu_W, lambda_a1, lambda_b1) for phi in phi_samples])
 
