@@ -270,8 +270,7 @@ def trainer(n_iter,
         print(f" ‣ ||Sigma_W||: {torch.norm(Sigma_W):.4f}")
         print(f" ‣ cond(Sigma_W): {torch.linalg.cond(Sigma_W):.4e}")
         print(f" ‣ cond(Rphi_inv): {torch.linalg.cond(mean_Rphi_inv):.4e}")
-        print(f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
-
+        print(f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")     
         
         # print(f"Iteration {iter+1}/{n_iter} completed.")
         # print("mu_lambda_beta:", mu_lambda_beta)
