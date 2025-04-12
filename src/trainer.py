@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 from elbo import vi_piX, vi_piS
+from tqdm import tqdm
 
 def nearest_pd_torch(A, epsilon=1e-6):
     """
@@ -128,10 +129,10 @@ def trainer(n_iter,
     optimizer_piS = optim.AdamW(model_piS.parameters(), lr=0.1, weight_decay=1e-2)
 
      
-    for iter in range(n_iter):
+    for iter in tqdm(range(n_iter)):
         # compute sigmasq_lambda_beta
         X_V_X_star_X = torch.einsum('bi,ij,bj->b', X, V_X_star, X).sum()
-        sigmasq_lambda_beta = 1.0 / (lambda_a2 * X_V_X_star_X) / lambda_b2 + 1.0 / sigmasq_beta
+        sigmasq_lambda_beta = 1.0 / (((lambda_a2 * X_V_X_star_X) / lambda_b2) + (1.0 / sigmasq_beta))
         
         # compute mu_lambda_beta
         residual = Y - (M_S_star @ mu_W.T).T
@@ -160,18 +161,16 @@ def trainer(n_iter,
         mu_W = (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
 
         
-        print("mean_Rphi_inv:", mean_Rphi_inv)
-        print("mu_W:", mu_W)
-        print("V_S_star:", V_S_star)
-        print("Sigma_W:", Sigma_W)
+        # print("mean_Rphi_inv:", mean_Rphi_inv)
+        # print("mu_W:", mu_W)
+        # print("V_S_star:", V_S_star)
+        # print("Sigma_W:", Sigma_W)
 
                 
-        print("Any NaNs in Sigma_W?", torch.isnan(Sigma_W).any())    
-        print("Any NaNs in M_S_star?", torch.isnan(M_S_star).any())  
-        print("Any NaNs in M_X_star?", torch.isnan(M_X_star).any())  
-        print("Any NaNs in mu_lambda_beta?", torch.isnan(mu_lambda_beta).any())    
-  
-  
+        # print("Any NaNs in Sigma_W?", torch.isnan(Sigma_W).any())    
+        # print("Any NaNs in M_S_star?", torch.isnan(M_S_star).any())  
+        # print("Any NaNs in M_X_star?", torch.isnan(M_X_star).any())  
+        # print("Any NaNs in mu_lambda_beta?", torch.isnan(mu_lambda_beta).any())    
 
             
         # compute Phi 
@@ -191,7 +190,7 @@ def trainer(n_iter,
             
         # Compute the mean of R(phi)^-1
         mean_Rphi_inv = Rphi_inv_sum
-        print("mean_Rphi_inv:", mean_Rphi_inv)
+        # print("mean_Rphi_inv:", mean_Rphi_inv)
 
         
 
@@ -203,21 +202,23 @@ def trainer(n_iter,
             loss.backward()  # Compute gradients
             optimizer_piX.step()  # Update parameters
 
-            # Print loss every 100 steps
-            if step % 1 == 0:
-                print(f"Step {step}, Loss: {loss.item()}")
-                print("Current MX:")
-                print(torch.exp(model_piX.MX.data))
+            # # Print loss every 100 steps
+            # if step % 1 == 0:
+            #     print(f"Step {step}, Loss: {loss.item()}")
+            #     print("Current MX:")
+            #     print(torch.exp(model_piX.MX.data))
 
-                print("\nCurrent VX:")
-                print(torch.exp(model_piX.VX.data))
+            #     print("\nCurrent VX:")
+            #     print(torch.exp(model_piX.VX.data))
                 
-                # Stopping rule: Stop if the loss change is below a threshold
-                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-                    print(f"Stopping early at step {step} due to minimal loss change.")
-                    break
-                prev_loss = loss.item()
+            #     # Stopping rule: Stop if the loss change is below a threshold
+            #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+            #         print(f"Stopping early at step {step} due to minimal loss change.")
+            #         break
+            #     prev_loss = loss.item()
         
+        print("Pix_loss", loss.item())
+
         # Extract the updated parameters
         M_X_star = model_piX.current_M_X_star.clone().data 
         V_X_star = model_piX.current_V_X_star.clone().data
@@ -230,24 +231,36 @@ def trainer(n_iter,
             loss.backward()  # Compute gradients
             optimizer_piS.step()  # Update parameters
 
-            # Print loss every step (or change 1 to 100 if you want sparser output)
-            if step % 1 == 0:
-                print(f"Step {step}, Loss: {loss.item()}")
-                print("Current MS:")
-                print(torch.exp(model_piS.MS.data))
+            # # Print loss every step (or change 1 to 100 if you want sparser output)
+            # if step % 1 == 0:
+            #     print(f"Step {step}, Loss: {loss.item()}")
+            #     print("Current MS:")
+            #     print(torch.exp(model_piS.MS.data))
 
-                print("\nCurrent VS:")
-                print(torch.exp(model_piS.VS.data))
+            #     print("\nCurrent VS:")
+            #     print(torch.exp(model_piS.VS.data))
 
-                # Stopping rule: Stop if the loss change is below a threshold
-                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-                    print(f"Stopping early at step {step} due to minimal loss change.")
-                    break
-                prev_loss = loss.item()
+            #     # Stopping rule: Stop if the loss change is below a threshold
+            #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+            #         print(f"Stopping early at step {step} due to minimal loss change.")
+            #         break
+            #     prev_loss = loss.item()
+            
+        print("PiS_loss", loss.item())
+
 
         # Extract the updated parameters
         M_S_star = model_piS.current_M_S_star.clone().data
         V_S_star = model_piS.current_V_S_star.clone().data
+        print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_b2: {lambda_b2:.4f}")
+        # print(f"Iteration {iter+1}/{n_iter} completed.")
+        # print("mu_lambda_beta:", mu_lambda_beta)
+        # print("sigmasq_lambda_beta:", sigmasq_lambda_beta)
+        # print("mean_Rphi_inv:", mean_Rphi_inv)
+        # print("M_X_star:", M_X_star)
+        # print("V_X_star:", V_X_star)
+        # print("lambda_b1", lambda_b1)
+        # print("lambda_b2", lambda_b2)
     
-    return mu_W, Sigma_W, M_X_star, V_X_star, M_S_star, V_S_star, mu_lambda_beta, sigmasq_lambda_beta, lambda_a1, lambda_b1, lambda_a2, lambda_b2   
+    return mu_W, Sigma_W, M_X_star, mean_Rphi_inv, V_X_star, M_S_star, V_S_star, mu_lambda_beta, sigmasq_lambda_beta, lambda_a1, lambda_b1, lambda_a2, lambda_b2   
         
