@@ -127,9 +127,9 @@ class vi_piX(nn.Module):
         super(vi_piX, self).__init__()
         self.n_locations = n_locations
         self.MX = nn.Parameter(torch.log(1/torch.tensor(n_locations)) * torch.ones(n_locations, n_locations, requires_grad=True))
-        self.VX = nn.Parameter((2)*torch.ones(n_locations, n_locations, requires_grad=True))
-        self.current_M_X_star = torch.zeros(n_locations, n_locations)
-        self.current_V_X_star = torch.zeros(n_locations, n_locations)
+        self.VX = nn.Parameter((-2)*torch.ones(n_locations, n_locations, requires_grad=True))
+        self.current_M_X_star = (1/torch.tensor(n_locations)) * torch.ones(n_locations, n_locations)
+        self.current_V_X_star = torch.eye(n_locations, n_locations)
         #self.VX_unconstrained = nn.Parameter(torch.full((n_locations, n_locations), 0.2))
             
     def forward(self, Y, X, mu_lambda_beta,
@@ -176,6 +176,8 @@ class vi_piX(nn.Module):
                 # (2) (mu^2 + sigma^2) * X_i^T * pi_x^T * pi_x * X_i
                 part2 = (mu_lambda_beta ** 2 + sigmasq_lambda_beta) * temp.dot(temp)
 
+
+
                 # (3) 2 * mu * X_i^T * pi_x^T * M_star_S * mu_Wi
                 part3 = 2 * mu_lambda_beta * (temp.T @ M_S_star @ mu_Wi)
 
@@ -214,9 +216,9 @@ class vi_piS(nn.Module):
         super(vi_piS, self).__init__()
         self.n_locations = n_locations
         self.MS = nn.Parameter(torch.log(1 / torch.tensor(n_locations)) * torch.ones(n_locations, n_locations, requires_grad=True))
-        self.VS = nn.Parameter((2) * torch.ones(n_locations, n_locations, requires_grad=True))
-        self.current_M_S_star = torch.zeros(n_locations, n_locations)
-        self.current_V_S_star = torch.zeros(n_locations, n_locations)
+        self.VS = nn.Parameter((-2) * torch.ones(n_locations, n_locations, requires_grad=True))
+        self.current_M_S_star = (1/torch.tensor(n_locations)) * torch.ones(n_locations, n_locations)
+        self.current_V_S_star = torch.eye(n_locations, n_locations)
 
     def forward(self, Y, X, mu_lambda_beta, M_X_star,
                 lambda_a2, lambda_b2, mu_W, Sigma_W,

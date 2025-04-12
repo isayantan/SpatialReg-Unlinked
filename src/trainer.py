@@ -2,7 +2,35 @@ import torch
 import torch.optim as optim
 from elbo import vi_piX, vi_piS
 
-def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb):
+def nearest_pd_torch(A, epsilon=1e-6):
+    """
+    Find the nearest positive definite matrix to A using eigenvalue clipping.
+
+    Args:
+        A (torch.Tensor): A symmetric matrix (n x n).
+        epsilon (float): Minimum eigenvalue threshold to ensure positive definiteness.
+
+    Returns:
+        torch.Tensor: A positive definite matrix close to A.
+    """
+    # Ensure symmetry
+    A_sym = (A + A.T) / 2
+
+    # Eigen decomposition
+    eigvals, eigvecs = torch.linalg.eigh(A_sym)
+
+    # Clip eigenvalues to be at least epsilon
+    eigvals_clipped = torch.clamp(eigvals, min=epsilon)
+
+    # Reconstruct matrix: V Λ V^T
+    A_pd = eigvecs @ torch.diag(eigvals_clipped) @ eigvecs.T
+
+    # Ensure symmetry again (numerical stability)
+    A_pd = (A_pd + A_pd.T) / 2
+
+    return A_pd
+
+def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb, eps = 1e-6):
     """
     Compute q(phi) as defined by the given expression.
 
@@ -19,27 +47,32 @@ def compute_q_phi(phi, Dist, sig, mean, lambda_sigmasqa, lambda_sigmasqb):
     """
     
     # Compute R(phi)
-    R_phi = torch.exp(-phi*Dist)
-    
-    # Step 1: Compute the inverse of R(phi)
-    R_phi_inv = torch.linalg.inv(R_phi)
-    
-    # Step 2: Compute the determinant of R(phi)
-    R_phi_det = torch.det(R_phi)
-    
-    # Step 3: Compute the trace term
-    trace_term = torch.trace(torch.matmul(R_phi_inv,sig))
-    
-    # Step 4: Compute the quadratic form term (mu_W^T * R(phi)^-1 * mu_W)
-    mu_W_term = torch.matmul(mean.flatten().T, torch.matmul(R_phi_inv, mean.flatten()))
-    
-    # Step 5: Compute the exponent
-    exponent = -0.5 * torch.log(R_phi_det) - (lambda_sigmasqa / (2 * lambda_sigmasqb)) * (trace_term + mu_W_term)
-    
-    # Step 6: Compute the final q(phi) which is the exponential of the exponent
-    q_phi = torch.exp(exponent)
-    
-    return q_phi
+    R_phi = torch.exp(-phi * Dist)
+
+    # Optionally: Ensure R_phi is positive-definite
+    R_phi += eps * torch.eye(R_phi.size(0), device=R_phi.device)
+
+    # Compute log(det(R_phi)) safely
+    sign, logdet = torch.linalg.slogdet(R_phi)
+    if sign <= 0:
+        # Handle log of non-positive determinant safely
+        logdet = torch.tensor(float('-inf'), device=R_phi.device)
+
+    # Solve R_phi x = sig instead of inverting
+    R_phi_inv_sig = torch.linalg.solve(R_phi, sig)
+    trace_term = torch.trace(R_phi_inv_sig)
+
+    # Solve R_phi x = mean
+    mean_flat = mean.flatten()
+    R_phi_inv_mean = torch.linalg.solve(R_phi, mean_flat)
+    mu_W_term = torch.dot(mean_flat, R_phi_inv_mean)
+
+    # Compute exponent
+    exponent = -0.5 * logdet - (lambda_sigmasqa / (2 * lambda_sigmasqb)) * (trace_term + mu_W_term)
+
+    # Return log of q_phi (numerically stable)
+    return exponent  # this is log(q_phi), better for log-domain work
+ 
     
 
 def trainer(n_iter,
@@ -47,6 +80,7 @@ def trainer(n_iter,
             n_locations, 
             X, Y, Dist, 
             n_steps=10, 
+            phi_init=0.3,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
@@ -67,11 +101,12 @@ def trainer(n_iter,
     sigmasq_lambda_beta = 0.1
     mu_W = torch.zeros(n_blocks, n_locations)
     Sigma_W = torch.eye(n_blocks * n_locations) 
-    mean_Rphi_inv = torch.eye(n_locations * n_blocks)
-    M_S_star = (1/n_locations) * torch.ones(n_locations, n_locations)
-    M_X_star = (1/n_locations) * torch.ones(n_locations, n_locations)
-    V_S_star = torch.eye(n_locations)
-    V_X_star = torch.eye(n_locations)
+    R_phi = torch.exp(-phi_init * Dist)
+    mean_Rphi_inv = torch.linalg.inv(nearest_pd_torch(R_phi))
+    # M_S_star = (1/n_locations) * torch.ones(n_locations, n_locations)
+    # M_X_star = (1/n_locations) * torch.ones(n_locations, n_locations)
+    # V_S_star = torch.eye(n_locations)
+    # V_X_star = torch.eye(n_locations)
     lambda_a1 = n_blocks * n_locations * 0.5 + a1
     lambda_b1 = 0.5
     lambda_a2 = n_blocks * n_locations * 0.5 + a2
@@ -81,10 +116,16 @@ def trainer(n_iter,
     model_piX = vi_piX(n_locations=n_locations)
     model_piS = vi_piS(n_locations=n_locations)
 
+    # # Initialize parameters
+    M_X_star = model_piX.current_M_X_star.clone().data 
+    V_X_star = model_piX.current_V_X_star.clone().data
+    M_S_star = model_piS.current_M_S_star.clone().data
+    V_S_star = model_piS.current_V_S_star.clone().data
+
+
     # Define the optimizer
     optimizer_piX = optim.AdamW(model_piX.parameters(), lr=0.1, weight_decay=1e-2)  
     optimizer_piS = optim.AdamW(model_piS.parameters(), lr=0.1, weight_decay=1e-2)
-
 
      
     for iter in range(n_iter):
@@ -113,11 +154,25 @@ def trainer(n_iter,
         term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
         term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
         # Sum the terms and take the inverse
-        Sigma_W = torch.inverse(term1 + term2)
+        Sigma_W = torch.linalg.inv(nearest_pd_torch(term1 + term2))
         
         # compute mu_W        
         mu_W = (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
-            
+
+        
+        print("mean_Rphi_inv:", mean_Rphi_inv)
+        print("mu_W:", mu_W)
+        print("V_S_star:", V_S_star)
+        print("Sigma_W:", Sigma_W)
+
+                
+        print("Any NaNs in Sigma_W?", torch.isnan(Sigma_W).any())    
+        print("Any NaNs in M_S_star?", torch.isnan(M_S_star).any())  
+        print("Any NaNs in M_X_star?", torch.isnan(M_X_star).any())  
+        print("Any NaNs in mu_lambda_beta?", torch.isnan(mu_lambda_beta).any())    
+  
+  
+
             
         # compute Phi 
         # Generate phi from a uniform distribution between 0 and max(Dist)
@@ -126,16 +181,18 @@ def trainer(n_iter,
         q_phi_values = torch.tensor([compute_q_phi(phi, Dist, Sigma_W, mu_W, lambda_a1, lambda_b1) for phi in phi_samples])
 
         # Normalize the importance weights
-        importance_weights = q_phi_values / q_phi_values.sum()
+        importance_weights = torch.nn.functional.softmax(q_phi_values, dim=0)
         
         Rphi_inv_sum = torch.zeros_like(Dist)
         for i in range(n_phi_samples):
             # Compute the weighted sum of phi_samples
-            Rphi_inv = torch.linalg.inv(torch.exp(-phi_samples[i] * Dist))
+            Rphi_inv = torch.linalg.inv(nearest_pd_torch(torch.exp(-phi_samples[i] * Dist)))
             Rphi_inv_sum += importance_weights[i] * Rphi_inv
             
         # Compute the mean of R(phi)^-1
         mean_Rphi_inv = Rphi_inv_sum
+        print("mean_Rphi_inv:", mean_Rphi_inv)
+
         
 
         # Minimize the model for piX
@@ -162,8 +219,8 @@ def trainer(n_iter,
                 prev_loss = loss.item()
         
         # Extract the updated parameters
-        M_X_star = model_piX.current_M_X_star.data 
-        V_X_star = model_piX.current_V_X_star.data
+        M_X_star = model_piX.current_M_X_star.clone().data 
+        V_X_star = model_piX.current_V_X_star.clone().data
 
         # Minimize the model for piS
         for step in range(n_steps):
@@ -189,8 +246,8 @@ def trainer(n_iter,
                 prev_loss = loss.item()
 
         # Extract the updated parameters
-        M_S_star = model_piS.current_M_S_star.data
-        V_S_star = model_piS.current_V_S_star.data
+        M_S_star = model_piS.current_M_S_star.clone().data
+        V_S_star = model_piS.current_V_S_star.clone().data
     
     return mu_W, Sigma_W, M_X_star, V_X_star, M_S_star, V_S_star, mu_lambda_beta, sigmasq_lambda_beta, lambda_a1, lambda_b1, lambda_a2, lambda_b2   
         
