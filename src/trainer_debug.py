@@ -87,7 +87,27 @@ def trainer(n_iter,
             n_piX_sample=10, 
             n_piS_sample=10,
             tau_X= 0.1, tau_S= 0.1,
-            seed=100):
+            seed=100, fix_mu_lambda_beta=False,
+            fix_sigmasq_lambda_beta=False,
+            fix_lambda_b1=False,
+            fix_lambda_b2=False,
+            fix_piX=False,
+            fix_piS=False,
+            fix_mu_W=False,
+            fix_Sigma_W=False,
+            fix_mean_Rphi_inv=False,
+            sigmasq_lambda_beta_fixed=0.1,
+            mu_lambda_beta_fixed=0.1,
+            lambda_b1_fixed=0.1,
+            lambda_b2_fixed=0.1,
+            M_X_star_fixed=None,
+            V_X_star_fixed=None,
+            M_S_star_fixed=None,
+            V_S_star_fixed=None,
+            mu_W_fixed=None,
+            Sigma_W_fixed=None,
+            mean_Rphi_inv_fixed=None,
+            ):
     
     # Prior hyperparameters
     a1 = 0.1
@@ -135,16 +155,25 @@ def trainer(n_iter,
         # compute sigmasq_lambda_beta
         X_V_X_star_X = torch.einsum('bi,ij,bj->b', X, V_X_star, X).sum()
         #print("Norm of X_V_X_star_X:", torch.norm(X_V_X_star_X))
-        sigmasq_lambda_beta = 1.0 / (((lambda_a2 * X_V_X_star_X) / lambda_b2) + (1.0 / sigmasq_beta))
+        if(fix_sigmasq_lambda_beta == False):
+            sigmasq_lambda_beta = 1.0 / (((lambda_a2 * X_V_X_star_X) / lambda_b2) + (1.0 / sigmasq_beta))
+        else: 
+            sigmasq_lambda_beta = sigmasq_lambda_beta_fixed
         
         # compute mu_lambda_beta
         residual = Y - (M_S_star @ mu_W.T).T
         X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
         #print("Norm of X_M_X_star_residual:", torch.norm(X_M_X_star_residual))
-        mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
+        if(fix_mu_lambda_beta == False):
+            mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
+        else:
+            mu_lambda_beta = mu_lambda_beta_fixed
         
         # lambda_b1
-        lambda_b1 = 0.5 * (torch.trace(mean_Rphi_inv @ Sigma_W) + mu_W.flatten().T @ mean_Rphi_inv @ mu_W.flatten()) + b1
+        if(fix_lambda_b1 == False):
+            lambda_b1 = 0.5 * (torch.trace(mean_Rphi_inv @ Sigma_W) + mu_W.flatten().T @ mean_Rphi_inv @ mu_W.flatten()) + b1
+        else:
+            lambda_b1 = lambda_b1_fixed
         
         # lambda_b2
         term = torch.trace(Y.T @ Y)
@@ -153,18 +182,27 @@ def trainer(n_iter,
         term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
         term -= 2 * mu_lambda_beta * X_M_X_star_residual
         term -= 2 * torch.einsum('bi,ij,bj->b',Y, M_S_star , mu_W).sum()
-        lambda_b2 = 0.5 * term + b2
+        if(fix_lambda_b2 == False):
+            lambda_b2 = 0.5 * term + b2
+        else:
+            lambda_b2 = lambda_b2_fixed
         
         # compute Sigma_W
         term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
         term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
         # Sum the terms and take the inverse
-        Sigma_W = torch.linalg.pinv(term1 + term2, rtol = 1e-3)
+        if(fix_Sigma_W == False):
+            Sigma_W = torch.linalg.pinv(term1 + term2, rtol = 1e-3)
+        else:
+            Sigma_W = Sigma_W_fixed
         
         # compute mu_W        
         #print("Norm of residual2:", torch.norm((M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()))
 
-        mu_W = (lambda_a2 / lambda_b2) * (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
+        if(fix_mu_W == False):
+            mu_W = (lambda_a2 / lambda_b2) * (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
+        else:
+            mu_W = mu_W_fixed
 
         # print("mean_Rphi_inv:", mean_Rphi_inv)
         # print("mu_W:", mu_W)
@@ -197,69 +235,83 @@ def trainer(n_iter,
             
         # Compute the mean of R(phi)^-1
         # make this stable
-        mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
+        if(fix_mean_Rphi_inv == False):
+            mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
+        else:
+            mean_Rphi_inv = mean_Rphi_inv_fixed    
         # print("mean_Rphi_inv:", mean_Rphi_inv)
 
         
+        if(fix_piX== False):
+            # Minimize the model for piX
+            for step in range(n_steps):
+                optimizer_piX.zero_grad()  # Clear gradients
+                loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample,seed=seed)
+                #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
+                loss.backward()  # Compute gradients
+                optimizer_piX.step()  # Update parameters
 
-        # Minimize the model for piX
-        for step in range(n_steps):
-            optimizer_piX.zero_grad()  # Clear gradients
-            loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample,seed=seed)
-            #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
-            loss.backward()  # Compute gradients
-            optimizer_piX.step()  # Update parameters
+                # # Print loss every 100 steps
+                # if step % 1 == 0:
+                #     print(f"Step {step}, Loss: {loss.item()}")
+                #     print("Current MX:")
+                #     print(torch.exp(model_piX.MX.data))
 
-            # # Print loss every 100 steps
-            # if step % 1 == 0:
-            #     print(f"Step {step}, Loss: {loss.item()}")
-            #     print("Current MX:")
-            #     print(torch.exp(model_piX.MX.data))
-
-            #     print("\nCurrent VX:")
-            #     print(torch.exp(model_piX.VX.data))
-                
-            #     # Stopping rule: Stop if the loss change is below a threshold
-            #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-            #         print(f"Stopping early at step {step} due to minimal loss change.")
-            #         break
-            #     prev_loss = loss.item()
-        
-        #print("Pix_loss", loss.item())
-
-        # Extract the updated parameters
-        M_X_star = model_piX.current_M_X_star.clone().data 
-        V_X_star = model_piX.current_V_X_star.clone().data
-
-        # Minimize the model for piS
-        for step in range(n_steps):
-            optimizer_piS.zero_grad()  # Clear gradients
-            loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
-                            mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, seed=seed)
-            loss.backward()  # Compute gradients
-            optimizer_piS.step()  # Update parameters
-
-            # # Print loss every step (or change 1 to 100 if you want sparser output)
-            # if step % 1 == 0:
-            #     print(f"Step {step}, Loss: {loss.item()}")
-            #     print("Current MS:")
-            #     print(torch.exp(model_piS.MS.data))
-
-            #     print("\nCurrent VS:")
-            #     print(torch.exp(model_piS.VS.data))
-
-            #     # Stopping rule: Stop if the loss change is below a threshold
-            #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-            #         print(f"Stopping early at step {step} due to minimal loss change.")
-            #         break
-            #     prev_loss = loss.item()
+                #     print("\nCurrent VX:")
+                #     print(torch.exp(model_piX.VX.data))
+                    
+                #     # Stopping rule: Stop if the loss change is below a threshold
+                #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                #         print(f"Stopping early at step {step} due to minimal loss change.")
+                #         break
+                #     prev_loss = loss.item()
             
-        #print("PiS_loss", loss.item())
+            #print("Pix_loss", loss.item())
+
+            # Extract the updated parameters
+       
+            M_X_star = model_piX.current_M_X_star.clone().data 
+            V_X_star = model_piX.current_V_X_star.clone().data
+        else:
+            M_X_star = M_X_star_fixed
+            V_X_star = V_X_star_fixed
+
+        
+        if(fix_piS == False):
+            # Minimize the model for piS
+            for step in range(n_steps):
+                optimizer_piS.zero_grad()  # Clear gradients
+                loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
+                                mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, seed=seed)
+                loss.backward()  # Compute gradients
+                optimizer_piS.step()  # Update parameters
+
+                # # Print loss every step (or change 1 to 100 if you want sparser output)
+                # if step % 1 == 0:
+                #     print(f"Step {step}, Loss: {loss.item()}")
+                #     print("Current MS:")
+                #     print(torch.exp(model_piS.MS.data))
+
+                #     print("\nCurrent VS:")
+                #     print(torch.exp(model_piS.VS.data))
+
+                #     # Stopping rule: Stop if the loss change is below a threshold
+                #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                #         print(f"Stopping early at step {step} due to minimal loss change.")
+                #         break
+                #     prev_loss = loss.item()
+                
+            #print("PiS_loss", loss.item())
 
 
         # Extract the updated parameters
-        M_S_star = model_piS.current_M_S_star.clone().data
-        V_S_star = model_piS.current_V_S_star.clone().data
+        
+            M_S_star = model_piS.current_M_S_star.clone().data
+            V_S_star = model_piS.current_V_S_star.clone().data
+        else:
+            M_S_star = M_S_star_fixed
+            V_S_star = V_S_star_fixed
+        
         print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | \n sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | \n lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
         norm_M_X_star = torch.norm(M_X_star)
         norm_V_X_star = torch.norm(V_X_star)
