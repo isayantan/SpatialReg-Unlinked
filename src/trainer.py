@@ -147,13 +147,23 @@ def trainer(n_iter,
         lambda_b1 = 0.5 * (torch.trace(mean_Rphi_inv @ Sigma_W) + mu_W.flatten().T @ mean_Rphi_inv @ mu_W.flatten()) + b1
         
         # lambda_b2
-        term = torch.trace(Y.T @ Y)
-        term += (mu_lambda_beta ** 2 + sigmasq_lambda_beta) * X_V_X_star_X
-        term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star, mu_W).sum()
+        # term = torch.trace(Y.T @ Y)
+        # term += (mu_lambda_beta ** 2 + sigmasq_lambda_beta) * X_V_X_star_X
+        # term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star, mu_W).sum()
+        # term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
+        # term -= 2 * mu_lambda_beta * X_M_X_star_residual
+        # term -= 2 * torch.einsum('bi,ij,bj->b',Y, M_S_star , mu_W).sum()
+        # lambda_b2 = 0.5 * term + b2
+        
+        # modified lambda_b2
+        MX_X = torch.einsum('ij,bj->bi', M_X_star, X)  # (B, d_y)
+        MS_muW = torch.einsum('ij,bj->bi', M_S_star, mu_W)  # (B, d_y)
+        residual = Y - mu_lambda_beta * MX_X - MS_muW  # (B, d_y)
+        term = torch.trace(residual.T @ residual)  # (1, 1)
+        term += mu_lambda_beta ** 2 * torch.einsum('bi,ij,bj->', X, V_X_star - M_X_star.T @ M_X_star, X)
+        term += sigmasq_lambda_beta * X_V_X_star_X
+        term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star - M_X_star.T @ M_S_star, mu_W).sum()
         term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
-        term -= 2 * mu_lambda_beta * X_M_X_star_residual
-        term -= 2 * torch.einsum('bi,ij,bj->b',Y, M_S_star , mu_W).sum()
-        lambda_b2 = 0.5 * term + b2
         
         # compute Sigma_W
         term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
