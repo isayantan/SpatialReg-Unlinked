@@ -156,8 +156,8 @@ class vi_piX(nn.Module):
         # Compute the ELBO
         B = Y.shape[0]
         elbo = 0.0
-        current_M_X_star = self.current_M_X_star
-        current_V_X_star = self.current_V_X_star
+        current_M_X_star = torch.zeros(self.n_locations, self.n_locations)
+        current_V_X_star = torch.zeros(self.n_locations, self.n_locations)
         for i in range(n_piX_sample):
             torch.manual_seed(i * seed)
             #Phi = MX_tilde + torch.sqrt(torch.exp(self.VX)) * torch.randn(self.n_locations, self.n_locations)
@@ -245,8 +245,8 @@ class vi_piS(nn.Module):
 
         B = Y.shape[0]
         elbo = 0.0
-        current_M_S_star = self.current_M_S_star
-        current_V_S_star = self.current_V_S_star
+        current_M_S_star = torch.zeros(self.n_locations, self.n_locations)
+        current_V_S_star = torch.zeros(self.n_locations, self.n_locations)
 
         for i in range(n_piS_sample):
             torch.manual_seed(i * seed)

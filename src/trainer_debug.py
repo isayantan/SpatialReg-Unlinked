@@ -190,6 +190,8 @@ def trainer(n_iter,
         res = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
         term = torch.trace(res.T @ res)  # (1, 1)
         term += mu_lambda_beta ** 2 * torch.trace(X @ (V_X_star - M_X_star.T @ M_X_star) @ X.T)
+        min_eigen_value = torch.min(torch.linalg.eigvalsh(V_X_star - M_X_star.T @ M_X_star))
+        print(f"Minimum eigenvalue of V_X_star - M_X_star.T @ M_X_star: {min_eigen_value:.4e}")
         term += sigmasq_lambda_beta * torch.trace(X @ V_X_star @ X.T)
         term += torch.trace(mu_W @ (V_S_star - M_S_star.T @ M_S_star) @ mu_W.T)
         term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)          
