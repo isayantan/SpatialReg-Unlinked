@@ -194,7 +194,7 @@ def trainer(n_iter,
         term = torch.trace(residual.T @ residual)  # (1, 1)
         term += mu_lambda_beta ** 2 * torch.einsum('bi,ij,bj->', X, V_X_star - M_X_star.T @ M_X_star, X)
         term += sigmasq_lambda_beta * X_V_X_star_X
-        term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star - M_X_star.T @ M_S_star, mu_W).sum()
+        term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star - M_S_star.T @ M_S_star, mu_W).sum()
         term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
         if(fix_lambda_b2 == False):
             lambda_b2 = 0.5 * term + b2
