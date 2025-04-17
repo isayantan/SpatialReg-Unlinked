@@ -106,7 +106,7 @@ def partition_domain_into_regions(B, n_i):
  
  
 
-def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tau_true,seed=42):
+def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tausq_true,seed=42, spatial=True):
     """
     Generates spatial data for a full region first, then assigns regions.
 
@@ -144,12 +144,15 @@ def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tau_true,seed=42
     x = np.random.rand(N, 1)  # Covariates for all locations
 
     # Compute spatially correlated residuals w(s) using Matérn kernel
-    matern_kernel = sigmasq * skMatern(nu=nu, length_scale=length_scale)
-    K = matern_kernel(s)  # Full covariance matrix
-    w = np.random.multivariate_normal(np.zeros(N), K)  # Residuals
+    if spatial == True:
+        matern_kernel = sigmasq * skMatern(nu=nu, length_scale=length_scale)
+        K = matern_kernel(s)  # Full covariance matrix
+        w = np.random.multivariate_normal(np.zeros(N), K)  # Residuals
+    else:
+        w = np.zeros(N)
 
     # Generate independent errors e(s)
-    e = np.random.normal(0, tau_true, N)  # Independent noise
+    e = np.random.normal(0, np.sqrt(tausq_true), N)  # Independent noise
 
     # Generate outcomes y(s)
     y = beta_true * x.flatten() + w + e  # Outcome variable

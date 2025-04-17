@@ -217,7 +217,7 @@ def trainer(n_iter,
 
             
         #compute Phi 
-        # Generate phi from a uniform distribution between 0 and max(Dist)
+        # Generate phi from a uniform distribution between 1/max(Dist) and 10
         torch.manual_seed(seed=seed)  #set seed for stochastic optimzation
 
         phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - (1 / torch.max(Dist))) + (1 / torch.max(Dist))

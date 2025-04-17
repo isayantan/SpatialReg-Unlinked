@@ -126,8 +126,11 @@ class vi_piX(nn.Module):
     def __init__(self, n_locations):
         super(vi_piX, self).__init__()
         self.n_locations = n_locations
-        self.MX = nn.Parameter(torch.log(1/torch.tensor(n_locations)) * torch.ones(n_locations, n_locations, requires_grad=True))
-        self.VX = nn.Parameter((-2)*torch.ones(n_locations, n_locations, requires_grad=True))
+        # Initialize with a random doubly stochastic matrix
+        random_matrix = torch.rand(n_locations, n_locations)
+        log_doubly_stochastic = sinkhorn_logspace((random_matrix), niters=10)
+        self.MX = nn.Parameter(log_doubly_stochastic, requires_grad=True)
+        self.VX = nn.Parameter((-2)*torch.ones(n_locations, n_locations),requires_grad=True)
         self.current_M_X_star = (1/torch.tensor(n_locations)) * torch.ones(n_locations, n_locations)
         self.current_V_X_star = torch.eye(n_locations, n_locations)
         #self.VX_unconstrained = nn.Parameter(torch.full((n_locations, n_locations), 0.2))
@@ -141,7 +144,7 @@ class vi_piX(nn.Module):
         torch.autograd.set_detect_anomaly(True)
 
         # sample piX
-        torch.manual_seed(seed=seed)  #set seed for stochastic optimzation
+         #set seed for stochastic optimzation
 
         # calculate nearest doubly stochastic matrix to MX once
         log_MX = self.MX
@@ -156,8 +159,10 @@ class vi_piX(nn.Module):
         current_M_X_star = self.current_M_X_star
         current_V_X_star = self.current_V_X_star
         for i in range(n_piX_sample):
+            torch.manual_seed(i * seed)
             #Phi = MX_tilde + torch.sqrt(torch.exp(self.VX)) * torch.randn(self.n_locations, self.n_locations)
-            Phi = MX_tilde + torch.sqrt(torch.special.expit(self.VX)*(2-0.01) + 0.01) * torch.randn(self.n_locations, self.n_locations)
+            z = torch.randn(self.n_locations, self.n_locations)
+            Phi = MX_tilde + torch.sqrt(torch.special.expit(self.VX)*(2-0.01) + 0.01) * z
             round_Phi = round_to_perm((Phi - 0.95 * Phi.min()).detach().numpy())
             current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_Phi, dtype=Phi.dtype)  # Access the current sample of piS
             #current_piX = tau_X * Phi + (1 - tau_X) * hungarian_algorithm(-Phi)
@@ -230,7 +235,7 @@ class vi_piS(nn.Module):
 
         # Enable anomaly detection
         torch.autograd.set_detect_anomaly(True)
-        torch.manual_seed(seed=seed)  #set seed for stochastic optimzation
+          #set seed for stochastic optimzation
         # set seed for reproducibility
 
         # Sinkhorn to project to the doubly stochastic matrix
@@ -244,8 +249,10 @@ class vi_piS(nn.Module):
         current_V_S_star = self.current_V_S_star
 
         for i in range(n_piS_sample):
+            torch.manual_seed(i * seed)
             #Phi = MS_tilde + torch.sqrt(torch.exp(self.VS)) * torch.randn(self.n_locations, self.n_locations)
-            Phi = MS_tilde + torch.sqrt(torch.special.expit(self.VS)*(2-0.01) + 0.01) * torch.randn(self.n_locations, self.n_locations)
+            z = torch.randn(self.n_locations, self.n_locations)
+            Phi = MS_tilde + torch.sqrt(torch.special.expit(self.VS)*(2-0.01) + 0.01) * z
             round_Phi = round_to_perm((Phi - 0.95 * Phi.min()).detach().numpy())
             current_piS = tau_S * Phi + (1 - tau_S) * torch.tensor(round_Phi, dtype=Phi.dtype)  # Access the current sample of piS
 
@@ -285,7 +292,7 @@ class vi_piS(nn.Module):
             neg_log_tauS = self.n_locations ** 2 * torch.log(torch.tensor(tau_S))
 
             # Update ELBO
-            elbo += total_term1 + total_log_term + neg_log_tauS + 0.5 * self.VS.sum()
+            elbo += total_term1 + total_log_term + neg_log_tauS + 0.5* torch.log(torch.special.expit(self.VS)*(2-0.01) + 0.01).sum()
 
         elbo = elbo / n_piS_sample
         self.current_M_S_star = current_M_S_star / n_piS_sample
