@@ -186,20 +186,31 @@ def trainer(n_iter,
         #     lambda_b2 = 0.5 * term + b2
         # else:
         #     lambda_b2 = lambda_b2_fixed
-            
-        # modified lambda_b2
-        MX_X = torch.einsum('ij,bj->bi', M_X_star, X)  # (B, d_y)
-        MS_muW = torch.einsum('ij,bj->bi', M_S_star, mu_W)  # (B, d_y)
-        residual = Y - mu_lambda_beta * MX_X - MS_muW  # (B, d_y)
-        term = torch.trace(residual.T @ residual)  # (1, 1)
-        term += mu_lambda_beta ** 2 * torch.einsum('bi,ij,bj->', X, V_X_star - M_X_star.T @ M_X_star, X)
-        term += sigmasq_lambda_beta * X_V_X_star_X
-        term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star - M_S_star.T @ M_S_star, mu_W).sum()
-        term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
+        
+        res = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
+        term = torch.trace(res.T @ res)  # (1, 1)
+        term += mu_lambda_beta ** 2 * torch.trace(X @ (V_X_star - M_X_star.T @ M_X_star) @ X.T)
+        term += sigmasq_lambda_beta * torch.trace(X @ V_X_star @ X.T)
+        term += torch.trace(mu_W @ (V_S_star - M_S_star.T @ M_S_star) @ mu_W.T)
+        term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)          
         if(fix_lambda_b2 == False):
             lambda_b2 = 0.5 * term + b2
         else:
             lambda_b2 = lambda_b2_fixed
+        
+        # modified lambda_b2
+        # MX_x = torch.einsum('ij,bj->bi', M_X_star, X)  # (B, d_y)
+        # MS_muW = torch.einsum('ij,bj->bi', M_S_star, mu_W)  # (B, d_y)
+        # residual = Y - mu_lambda_beta * MX_x - MS_muW  # (B, d_y)
+        # term = torch.trace(residual.T @ residual)  # (1, 1)
+        # term += mu_lambda_beta ** 2 * torch.einsum('bi,ij,bj->', X, V_X_star - M_X_star.T @ M_X_star, X)
+        # term += sigmasq_lambda_beta * X_V_X_star_X
+        # term += torch.einsum('bi,ij,bj->b', mu_W, V_S_star - M_S_star.T @ M_S_star, mu_W).sum()
+        # term += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
+        # if(fix_lambda_b2 == False):
+        #     lambda_b2 = 0.5 * term + b2
+        # else:
+        #     lambda_b2 = lambda_b2_fixed
             
         
         # compute Sigma_W
