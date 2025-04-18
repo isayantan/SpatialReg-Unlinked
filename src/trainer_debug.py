@@ -354,12 +354,13 @@ def trainer(n_iter,
               f"‣ cond(Sigma_W): {torch.linalg.cond(Sigma_W):.4e} | "
               f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
         
-        total_loss = torch.trace(Y.T @ Y)
-        total_loss += (mu_lambda_beta ** 2 + sigmasq_lambda_beta) * X_V_X_star_X
-        total_loss += torch.einsum('bi,ij,bj->b', mu_W, V_S_star, mu_W).sum()
-        total_loss += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
-        total_loss -= 2 * mu_lambda_beta * X_M_X_star_residual
-        total_loss -= 2 * torch.einsum('bi,ij,bj->b', Y, M_S_star, mu_W).sum()
+       
+        resid = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
+        total_loss = torch.trace(resid.T @ resid)  # (1, 1)
+        total_loss += mu_lambda_beta ** 2 * torch.trace(X @ (V_X_star - M_X_star.T @ M_X_star) @ X.T)
+        total_loss += sigmasq_lambda_beta * torch.trace(X @ V_X_star @ X.T)
+        total_loss += torch.trace(mu_W @ (V_S_star - M_S_star.T @ M_S_star) @ mu_W.T)
+        total_loss += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)          
         print(f"Total Loss: {torch.sqrt(total_loss/(n_locations * n_blocks)):.4f}")
 
 
