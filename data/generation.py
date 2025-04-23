@@ -133,7 +133,6 @@ def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tausq_true,seed=
         Outcome, covariates, spatial residuals, noise, locations, and region assignments.
     """
     np.random.seed(seed)  # Set seed for reproducibility
-    random.seed(seed)  # Set seed for reproducibility
     
     N = B * n_i  # Total number of spatial locations
     
