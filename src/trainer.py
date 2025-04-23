@@ -86,13 +86,14 @@ def trainer(n_iter,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
-            tau_X= 0.1, tau_S= 0.1):
+            tau_X= 0.1, tau_S= 0.1,
+            seed=100):
     
     # Prior hyperparameters
-    a1 = 100
-    b1 = 10
-    a2 = 100
-    b2 = 10
+    a1 = 0.1
+    b1 = 0.1
+    a2 = 0.1
+    b2 = 0.1
     eta_X_sq = 0.1
     eta_S_sq = 0.1
     sigmasq_beta = 100
@@ -133,13 +134,13 @@ def trainer(n_iter,
     for iter in tqdm(range(n_iter)):
         # compute sigmasq_lambda_beta
         X_V_X_star_X = torch.einsum('bi,ij,bj->b', X, V_X_star, X).sum()
-        print("Norm of X_V_X_star_X:", torch.norm(X_V_X_star_X))
+        #print("Norm of X_V_X_star_X:", torch.norm(X_V_X_star_X))
         sigmasq_lambda_beta = 1.0 / (((lambda_a2 * X_V_X_star_X) / lambda_b2) + (1.0 / sigmasq_beta))
         
         # compute mu_lambda_beta
         residual = Y - (M_S_star @ mu_W.T).T
         X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
-        print("Norm of X_M_X_star_residual:", torch.norm(X_M_X_star_residual))
+        #print("Norm of X_M_X_star_residual:", torch.norm(X_M_X_star_residual))
         mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
         
         # lambda_b1
@@ -154,6 +155,7 @@ def trainer(n_iter,
         term -= 2 * torch.einsum('bi,ij,bj->b',Y, M_S_star , mu_W).sum()
         lambda_b2 = 0.5 * term + b2
         
+        
         # compute Sigma_W
         term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
         term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
@@ -161,7 +163,7 @@ def trainer(n_iter,
         Sigma_W = torch.linalg.pinv(term1 + term2, rtol = 1e-3)
         
         # compute mu_W        
-        print("Norm of residual2:", torch.norm((M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()))
+        #print("Norm of residual2:", torch.norm((M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()))
 
         mu_W = (lambda_a2 / lambda_b2) * (Sigma_W @ (M_S_star.T @ Y.T - mu_lambda_beta * M_S_star.T @ M_X_star @ X.T).T.flatten()).reshape(n_blocks, n_locations)
 
@@ -179,6 +181,8 @@ def trainer(n_iter,
             
         #compute Phi 
         # Generate phi from a uniform distribution between 0 and max(Dist)
+        torch.manual_seed(seed=seed)  #set seed for stochastic optimzation
+
         phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
         # Calculate q_phi for each phi_sample
         q_phi_values = torch.tensor([compute_q_phi(phi, Dist, Sigma_W, mu_W, lambda_a1, lambda_b1) for phi in phi_samples])
@@ -202,7 +206,7 @@ def trainer(n_iter,
         # Minimize the model for piX
         for step in range(n_steps):
             optimizer_piX.zero_grad()  # Clear gradients
-            loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample)
+            loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample,seed=seed)
             #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
             loss.backward()  # Compute gradients
             optimizer_piX.step()  # Update parameters
@@ -222,7 +226,7 @@ def trainer(n_iter,
             #         break
             #     prev_loss = loss.item()
         
-        print("Pix_loss", loss.item())
+        #print("Pix_loss", loss.item())
 
         # Extract the updated parameters
         M_X_star = model_piX.current_M_X_star.clone().data 
@@ -232,7 +236,7 @@ def trainer(n_iter,
         for step in range(n_steps):
             optimizer_piS.zero_grad()  # Clear gradients
             loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
-                            mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample)
+                            mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, seed=seed)
             loss.backward()  # Compute gradients
             optimizer_piS.step()  # Update parameters
 
@@ -251,27 +255,36 @@ def trainer(n_iter,
             #         break
             #     prev_loss = loss.item()
             
-        print("PiS_loss", loss.item())
+        #print("PiS_loss", loss.item())
 
 
         # Extract the updated parameters
         M_S_star = model_piS.current_M_S_star.clone().data
         V_S_star = model_piS.current_V_S_star.clone().data
-        print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
+        print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | \n sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | \n lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
         norm_M_X_star = torch.norm(M_X_star)
         norm_V_X_star = torch.norm(V_X_star)
         norm_M_S_star = torch.norm(M_S_star)
         norm_V_S_star = torch.norm(V_S_star)
         norm_mean_Rphi_inv = torch.norm(mean_Rphi_inv)
-
-        print(f"‣ ||M_X_star||: {norm_M_X_star:.4f}, ||V_X_star||: {norm_V_X_star:.4f}")
-        print(f"‣ ||M_S_star||: {norm_M_S_star:.4f}, ||V_S_star||: {norm_V_S_star:.4f}")
-        print(f"‣ ||E[R(ϕ)]⁻¹||: {norm_mean_Rphi_inv:.4f}")
-        print(f" ‣ ||Sigma_W||: {torch.norm(Sigma_W):.4f}")
-        print(f" ‣ cond(Sigma_W): {torch.linalg.cond(Sigma_W):.4e}")
-        print(f" ‣ cond(Rphi_inv): {torch.linalg.cond(mean_Rphi_inv):.4e}")
-        print(f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")     
+        print(f"‣ ||M_X_star||: {norm_M_X_star:.4f}, ||V_X_star||: {norm_V_X_star:.4f} | "
+              f"‣ ||M_S_star||: {norm_M_S_star:.4f}, ||V_S_star||: {norm_V_S_star:.4f} | "
+              f"‣ ||E[R(ϕ)]⁻¹||: {norm_mean_Rphi_inv:.4f} | "
+              f"‣ cond(Rphi_inv): {torch.linalg.cond(mean_Rphi_inv):.4e} | "
+              f"‣ ||Sigma_W||: {torch.norm(Sigma_W):.4f} | "
+              f"‣ cond(Sigma_W): {torch.linalg.cond(Sigma_W):.4e} | "
+              f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
         
+        total_loss = torch.trace(Y.T @ Y)
+        total_loss += (mu_lambda_beta ** 2 + sigmasq_lambda_beta) * X_V_X_star_X
+        total_loss += torch.einsum('bi,ij,bj->b', mu_W, V_S_star, mu_W).sum()
+        total_loss += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)
+        total_loss -= 2 * mu_lambda_beta * X_M_X_star_residual
+        total_loss -= 2 * torch.einsum('bi,ij,bj->b', Y, M_S_star, mu_W).sum()
+        print(f"Total Loss: {torch.sqrt(total_loss/(n_locations * n_blocks)):.4f}")
+
+
+
         # print(f"Iteration {iter+1}/{n_iter} completed.")
         # print("mu_lambda_beta:", mu_lambda_beta)
         # print("sigmasq_lambda_beta:", sigmasq_lambda_beta)
