@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 import torch.optim as optim
-from tqdm import tqdm
 
 from GPModel import GPModel
 from GPArealModel import GPArealModel
@@ -16,10 +15,15 @@ from VIGP_Unlinked import VIGP_Unlinked
 # Add the path to the src directory
 sys.path.append(os.path.abspath(os.path.join('..', 'data')))
 
+# Get input from command line arguments
+if len(sys.argv) < 4:
+    raise ValueError("Please provide values for B, n_i, and seed as command line arguments.")
+
+B = int(sys.argv[1])
+n_i = int(sys.argv[2])
+seed = int(sys.argv[3])
+
 result = {}
-B = 100
-n_i = 4
-seed = 1
 input_dim = 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
