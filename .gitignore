@@ -1,10 +1,14 @@
 # ignore trial ipynb file
 # notebooks/trial.ipynb
 
+# ignore all .pt files
+*.pt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
 
 # C extensions
 *.so

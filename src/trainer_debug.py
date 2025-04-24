@@ -355,6 +355,21 @@ def trainer(n_iter,
         # print("V_X_star:", V_X_star)
         # print("lambda_b1", lambda_b1)
         # print("lambda_b2", lambda_b2)
-    
-    return mu_W, Sigma_W, M_X_star, mean_Rphi_inv, V_X_star, M_S_star, V_S_star, mu_lambda_beta, sigmasq_lambda_beta, lambda_a1, lambda_b1, lambda_a2, lambda_b2   
+        
+        # Save parameters in a dictionary
+        parameters = {
+            "M_X_star": M_X_star,
+            "mean_Rphi_inv": mean_Rphi_inv,
+            "V_X_star": V_X_star,
+            "M_S_star": M_S_star,
+            "V_S_star": V_S_star,
+            "mu_lambda_beta": mu_lambda_beta,
+            "sigmasq_lambda_beta": sigmasq_lambda_beta,
+            "lambda_a1": lambda_a1,
+            "lambda_b1": lambda_b1,
+            "lambda_a2": lambda_a2,
+            "lambda_b2": lambda_b2,
+            "mean_phi": mean_phi
+        }
+    return parameters
         
