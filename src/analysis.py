@@ -2,7 +2,6 @@
 import sys
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 import torch.optim as optim
@@ -54,7 +53,7 @@ tausq_true = data['tausq_true']
 model = GPModel().to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.01)
 
-for i in tqdm(range(10)):
+for i in tqdm(range(2000)):
     optimizer.zero_grad()
     loss = model(s, x, y)
     loss.backward()
@@ -101,7 +100,7 @@ for i, region in enumerate(unique_regions):
 model = GPArealModel().to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.01)
 
-for i in tqdm(range(10)):
+for i in tqdm(range(2000)):
     optimizer.zero_grad()
     loss = model(s_jumbled_within_regions, region_assignments, xbar, ybar)
     loss.backward()
@@ -121,7 +120,7 @@ result['GPArealModel'] = model_params
 
 
 # Train the model VIGP_unlinked
-n_iter = 10
+n_iter = 200
 n_blocks = B
 n_locations = n_i
 
