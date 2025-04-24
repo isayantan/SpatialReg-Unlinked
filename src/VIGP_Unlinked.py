@@ -2,91 +2,9 @@ import torch
 import torch.optim as optim
 from elbo import vi_piX, vi_piS
 from tqdm import tqdm
-from scipy.optimize import linear_sum_assignment
-import numpy as np
-from typing import Tuple
-import math
+from utils import nearest_pd_torch, compute_q_phi, round_to_perm
 
-
-def round_to_perm(P):
-    N = P.shape[0]
-    assert P.shape == (N, N)
-    row, col = linear_sum_assignment(-P)
-    P = np.zeros((N, N))
-    P[row, col] = 1.0
-    return P
-
-def nearest_pd_torch(A, epsilon=1e-6):
-    """
-    Find the nearest positive definite matrix to A using eigenvalue clipping.
-
-    Args:
-        A (torch.Tensor): A symmetric matrix (n x n).
-        epsilon (float): Minimum eigenvalue threshold to ensure positive definiteness.
-
-    Returns:
-        torch.Tensor: A positive definite matrix close to A.
-    """
-    # Ensure symmetry
-    A_sym = (A + A.T) / 2
-
-    # Eigen decomposition
-    eigvals, eigvecs = torch.linalg.eigh(A_sym)
-
-    # Clip eigenvalues to be at least epsilon
-    eigvals_clipped = torch.clamp(eigvals, min=epsilon)
-
-    # Reconstruct matrix: V Λ V^T
-    A_pd = eigvecs @ torch.diag(eigvals_clipped) @ eigvecs.T
-
-    # Ensure symmetry again (numerical stability)
-    A_pd = (A_pd + A_pd.T) / 2
-
-    return A_pd
-
-def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-6):
-    """
-    Compute q(phi) as defined by the given expression.
-
-    Args:
-    - phi (scalar): The tensor for which q(phi) needs to be calculated (B x d).
-    - Dist (torch.Tensor): The distance matrix (nB X nB).
-    - Sigma_W (torch.Tensor): The matrix Sigma_W (nB x nB).
-    - mu_W (torch.Tensor): The vector mu_W (d,).
-    - lambda_a1 (float): The scalar value for lambda_a1.
-    - lambda_b1 (float): The scalar value for lambda_b1.
-    
-    Returns:
-    - q_phi (torch.Tensor): The calculated q(phi).
-    """
-    
-    # Compute R(phi)
-    R_phi = torch.exp(-phi * Dist)
-
-    # Optionally: Ensure R_phi is positive-definite
-    R_phi += eps * torch.eye(R_phi.size(0), device=R_phi.device)
-
-    # Compute log(det(R_phi)) safely
-    sign, logdet = torch.linalg.slogdet(R_phi)
-    if sign <= 0:
-        # Handle log of non-positive determinant safely
-        logdet = torch.tensor(float('-inf'), device=R_phi.device)
-
-    # Solve R_phi x = mean
-    mu_W_flat = mu_W.flatten()
-    V_W = Sigma_W + torch.outer(mu_W_flat, mu_W_flat)
-
-    R_phi_inv_mean = torch.linalg.solve(R_phi, V_W)
-
-    # Compute exponent
-    exponent = -0.5 * logdet - (lambda_a1 / (2 * lambda_b1)) * (torch.trace(R_phi_inv_mean))
-
-    # Return log of q_phi (numerically stable)
-    return exponent  # this is log(q_phi), better for log-domain work
- 
-    
-
-def trainer(n_iter,
+def VIGP_Unlinked(n_iter,
             n_blocks,
             n_locations, 
             X, Y, Dist, 
@@ -320,11 +238,6 @@ def trainer(n_iter,
             V_S_star = V_S_star_fixed
         
         print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | \n sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | \n lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
-        norm_M_X_star = torch.norm(M_X_star)
-        norm_V_X_star = torch.norm(V_X_star)
-        norm_M_S_star = torch.norm(M_S_star)
-        norm_V_S_star = torch.norm(V_S_star)
-        norm_mean_Rphi_inv = torch.norm(mean_Rphi_inv)
         print(f"‣  E[ϕ]: {mean_phi:.4f} | "
               f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
         if pi_X_true is not None:

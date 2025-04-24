@@ -1,27 +1,7 @@
-from typing import Tuple
 import torch
-from torch import Tensor
 import torch.nn as nn
-import math
-from scipy.optimize import linear_sum_assignment
 import numpy as np
-
-def round_to_perm(P):
-    N = P.shape[0]
-    assert P.shape == (N, N)
-    row, col = linear_sum_assignment(-P)
-    P = np.zeros((N, N))
-    P[row, col] = 1.0
-    return P
-
-def sinkhorn_logspace(logP, niters=10):
-    for _ in range(niters):
-        # Normalize columns and take the log again
-        logP = logP - torch.logsumexp(logP, dim=0, keepdim=True)
-        # Normalize rows and take the log again
-        logP = logP - torch.logsumexp(logP, dim=1, keepdim=True)
-    return logP
-
+from utils import round_to_perm, sinkhorn_logspace
 
 class vi_piX(nn.Module):
     def __init__(self, n_locations):
