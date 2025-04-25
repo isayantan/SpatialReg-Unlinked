@@ -28,7 +28,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 niter_GP=2000
 niter_GPAreal=2000
-niter_VI= 2000
+niter_VI= 100
 
 # Load data from the specified path
 data_path = os.path.join('..', 'data', f'B_{B}_n_{n_i}', f'data_seed_{seed}.pt')
@@ -124,7 +124,6 @@ result['GPArealModel'] = model_params
 
 
 # Train the model VIGP_unlinked
-niter_VI = 10
 n_blocks = B
 n_locations = n_i
 
