@@ -36,7 +36,9 @@ def VIGP_Unlinked(n_iter,
             Sigma_W_fixed=None,
             mean_Rphi_inv_fixed=None,
             pi_X_true = None,
-            pi_S_true = None
+            pi_S_true = None,
+            VX_ub= 2,
+            VS_ub= 2,
             ):
     
     # Prior hyperparameters
@@ -171,7 +173,8 @@ def VIGP_Unlinked(n_iter,
             # Minimize the model for piX
             for step in range(n_steps):
                 optimizer_piX.zero_grad()  # Clear gradients
-                loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, n_piX_sample,seed=seed)
+                loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, 
+                                n_piX_sample,VX_ub= VX_ub, seed=seed)
                 #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
                 loss.backward()  # Compute gradients
                 optimizer_piX.step()  # Update parameters
@@ -207,7 +210,8 @@ def VIGP_Unlinked(n_iter,
             for step in range(n_steps):
                 optimizer_piS.zero_grad()  # Clear gradients
                 loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
-                                mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, seed=seed)
+                                mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, VS_ub = VS_ub, 
+                                seed=seed)
                 loss.backward()  # Compute gradients
                 optimizer_piS.step()  # Update parameters
 
@@ -257,6 +261,11 @@ def VIGP_Unlinked(n_iter,
         total_loss += torch.trace(mu_W @ (V_S_star - M_S_star.T @ M_S_star) @ mu_W.T)
         total_loss += torch.trace(torch.block_diag(*[V_S_star] * n_blocks) @ Sigma_W)          
         print(f"Total Loss: {torch.sqrt(total_loss/(n_locations * n_blocks)):.4f}")
+        # Store the loss in a vector
+        if iter == 0:
+            loss_vector = torch.zeros(n_iter)
+        loss_vector[iter] = total_loss/(n_locations * n_blocks)
+        
 
 
 
@@ -282,7 +291,8 @@ def VIGP_Unlinked(n_iter,
             "lambda_b1": lambda_b1,
             "lambda_a2": lambda_a2,
             "lambda_b2": lambda_b2,
-            "mean_phi": mean_phi
+            "mean_phi": mean_phi, 
+            "loss_vector": loss_vector,
         }
     return parameters
         

@@ -58,6 +58,10 @@ for i in tqdm(range(2000)):
     loss = model(s, x, y)
     loss.backward()
     optimizer.step()
+    # Store the loss value for later use
+    if not hasattr(model, 'loss_vector'):
+        model.loss_vector = []
+    model.loss_vector.append(loss.item())
     
     # Constrain sigmasq, length_scale, and tausq to be positive
     with torch.no_grad():
@@ -71,7 +75,8 @@ model_params = {
     'phi': 1/model.length_scale.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
-    'beta': model.beta.detach().cpu().numpy()
+    'beta': model.beta.detach().cpu().numpy(),
+    'loss_vector': [loss for loss in model.loss_vector]
 }
 
 # Save the model parameters to a file
@@ -105,6 +110,10 @@ for i in tqdm(range(2000)):
     loss = model(s_jumbled_within_regions, region_assignments, xbar, ybar)
     loss.backward()
     optimizer.step()
+    # Store the loss value for later use
+    if not hasattr(model, 'loss_vector'):
+        model.loss_vector = []
+    model.loss_vector.append(loss.item())
 
 
 # Save the model parameters
@@ -113,7 +122,8 @@ model_params = {
     'phi': 1/model.length_scale.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
-    'beta': model.beta.detach().cpu().numpy()
+    'beta': model.beta.detach().cpu().numpy(),
+    'loss_vector': [loss for loss in model.loss_vector]
 }
 # Save the model parameters to a file
 result['GPArealModel'] = model_params
@@ -151,7 +161,7 @@ for tau in [0.1, 0.3, 0.5]:
         n_iter=n_iter,
         n_blocks=n_blocks,
         n_locations=n_locations,
-        phi_prior_ub=5,
+        phi_prior_ub=10,
         X=X,
         Y=Y,
         Dist=Dist,
@@ -176,7 +186,9 @@ for tau in [0.1, 0.3, 0.5]:
         mean_Rphi_inv_fixed= torch.linalg.inv(torch.exp(-4 * Dist)),
         fix_mean_Rphi_inv=False, 
         pi_X_true = perm_matrix_x.T,
-        pi_S_true = perm_matrix_s.T
+        pi_S_true = perm_matrix_s.T, 
+        VX_ub = 0.5,
+        VS_ub = 0.5
     )
    
     # Save the model parameters to the result dictionary

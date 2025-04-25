@@ -19,7 +19,7 @@ class vi_piX(nn.Module):
     def forward(self, Y, X, mu_lambda_beta,
                 sigmasq_lambda_beta, M_S_star, mu_W,
                 eta_X_sq, lambda_a2, lambda_b2, 
-                tau_X = 0.1, n_piX_sample = 100, seed = 100):
+                tau_X=0.1, n_piX_sample=100, VX_ub=2, seed=100):
         
         # Enable anomaly detection
         torch.autograd.set_detect_anomaly(True)
@@ -39,7 +39,7 @@ class vi_piX(nn.Module):
         for i in range(n_piX_sample):
             torch.manual_seed(i * seed)
             z = torch.randn(self.n_locations, self.n_locations)
-            Phi = MX_tilde + torch.sqrt(torch.special.expit(self.VX)*(2-0.01) + 0.01) * z
+            Phi = MX_tilde + torch.sqrt(torch.special.expit(self.VX)*(VX_ub-0.01) + 0.01) * z
             round_Phi = round_to_perm((Phi - 0.95 * Phi.min()).detach().numpy())
             current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_Phi, dtype=Phi.dtype)  # Access the current sample of piS
             current_M_X_star += current_piX
@@ -72,7 +72,7 @@ class vi_piX(nn.Module):
 
             # Update ELBO
             #elbo += total_term1 + total_log_term + neg_log_tauX + 0.5 * self.VX.sum()
-            elbo += total_term1 + total_log_term + neg_log_tauX + 0.5* torch.log(torch.special.expit(self.VX)*(2-0.01) + 0.01).sum()  # Ensure positive definiteness
+            elbo += total_term1 + total_log_term + neg_log_tauX + 0.5* torch.log(torch.special.expit(self.VX)*(VX_ub-0.01) + 0.01).sum()  # Ensure positive definiteness
             #elbo += total_term1 + neg_log_tauX + 2 * self.VX.sum()
 
         
