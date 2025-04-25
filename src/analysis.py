@@ -26,6 +26,10 @@ result = {}
 input_dim = 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+niter_GP=2000
+niter_GPAreal=2000
+niter_VI= 2000
+
 # Load data from the specified path
 data_path = os.path.join('..', 'data', f'B_{B}_n_{n_i}', f'data_seed_{seed}.pt')
 data = torch.load(data_path)
@@ -53,15 +57,11 @@ tausq_true = data['tausq_true']
 model = GPModel().to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.01)
 
-for i in tqdm(range(2000)):
+for i in tqdm(range(niter_GP)):
     optimizer.zero_grad()
     loss = model(s, x, y)
     loss.backward()
     optimizer.step()
-    # Store the loss value for later use
-    if not hasattr(model, 'loss_vector'):
-        model.loss_vector = []
-    model.loss_vector.append(loss.item())
     
     # Constrain sigmasq, length_scale, and tausq to be positive
     with torch.no_grad():
@@ -75,8 +75,7 @@ model_params = {
     'phi': 1/model.length_scale.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
-    'beta': model.beta.detach().cpu().numpy(),
-    'loss_vector': [loss for loss in model.loss_vector]
+    'beta': model.beta.detach().cpu().numpy()
 }
 
 # Save the model parameters to a file
@@ -105,15 +104,11 @@ for i, region in enumerate(unique_regions):
 model = GPArealModel().to(device)
 optimizer = optim.AdamW(model.parameters(), lr=0.01, weight_decay=0.01)
 
-for i in tqdm(range(2000)):
+for i in tqdm(range(niter_GPAreal)):
     optimizer.zero_grad()
     loss = model(s_jumbled_within_regions, region_assignments, xbar, ybar)
     loss.backward()
     optimizer.step()
-    # Store the loss value for later use
-    if not hasattr(model, 'loss_vector'):
-        model.loss_vector = []
-    model.loss_vector.append(loss.item())
 
 
 # Save the model parameters
@@ -122,15 +117,14 @@ model_params = {
     'phi': 1/model.length_scale.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
-    'beta': model.beta.detach().cpu().numpy(),
-    'loss_vector': [loss for loss in model.loss_vector]
+    'beta': model.beta.detach().cpu().numpy()
 }
 # Save the model parameters to a file
 result['GPArealModel'] = model_params
 
 
 # Train the model VIGP_unlinked
-n_iter = 200
+niter_VI = 10
 n_blocks = B
 n_locations = n_i
 
@@ -149,16 +143,14 @@ Dist = torch.cdist(locations, locations, p=2)  # Pairwise distances
 n_steps = 50
 n_phi_samples = 50
 n_piX_sample = 50
-tau_X = 0.3
-tau_S = 0.3
 n_piS_sample = 50
 
-for tau in [0.1, 0.3, 0.5]:
+for tau in [0.05, 0.1, 0.2, 0.3,0.4, 0.5, 0.55]:
     tau_X = tau
     tau_S = tau
 
     results_VI = VIGP_Unlinked(
-        n_iter=n_iter,
+        n_iter=niter_VI,
         n_blocks=n_blocks,
         n_locations=n_locations,
         phi_prior_ub=10,
@@ -186,9 +178,9 @@ for tau in [0.1, 0.3, 0.5]:
         mean_Rphi_inv_fixed= torch.linalg.inv(torch.exp(-4 * Dist)),
         fix_mean_Rphi_inv=False, 
         pi_X_true = perm_matrix_x.T,
-        pi_S_true = perm_matrix_s.T, 
+        pi_S_true = perm_matrix_s.T,
         VX_ub = 0.5,
-        VS_ub = 0.5
+        VS_ub=0.5
     )
    
     # Save the model parameters to the result dictionary
