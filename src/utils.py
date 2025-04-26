@@ -131,7 +131,7 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-6):
     R_phi = torch.exp(-phi * Dist)
 
     # Optionally: Ensure R_phi is positive-definite
-    R_phi += eps * torch.eye(R_phi.size(0), device=R_phi.device)
+    R_phi = nearest_pd_torch(R_phi, epsilon=eps)
 
     # Compute log(det(R_phi)) safely
     sign, logdet = torch.linalg.slogdet(R_phi)
