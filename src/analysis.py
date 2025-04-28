@@ -26,8 +26,8 @@ result = {}
 input_dim = 1
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-niter_GP=2000
-niter_GPAreal=2000
+niter_GP=3000
+niter_GPAreal=3000
 niter_VI= 100
 
 # Load data from the specified path
