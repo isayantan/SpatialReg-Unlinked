@@ -10,7 +10,7 @@ def sinkhorn_logspace(logP, niters=10):
         logP = logP - torch.logsumexp(logP, dim=1, keepdim=True)
     return logP
 
-def exponential_kernel(X1, X2, length_scale=1.0, sigma=1.0):
+def exponential_kernel(X1, X2, phi=1.0, sigma=1.0):
     """
     Computes the Matérn covariance function with ν = 1/2 (exponential covariance).
 
@@ -24,10 +24,11 @@ def exponential_kernel(X1, X2, length_scale=1.0, sigma=1.0):
         torch.Tensor: Covariance matrix of shape (n, m).
     """
     dists = torch.cdist(X1, X2, p=2)  # Compute pairwise Euclidean distances
-    return sigma * torch.exp(-dists / length_scale)
+    dists = (dists + dists.T) / 2  # Ensure symmetry
+    return sigma * torch.exp(- (phi * dists))
 
 
-def compute_regionwise_covariance(s, region_assignments, sigmasq, length_scale, nu=0.5, tausq=1):
+def compute_regionwise_covariance(s, region_assignments, sigmasq, phi, nu=0.5, tausq=1):
     """
     Computes the variance-covariance matrix for the averaged spatial GP process w_ibar.
 
@@ -47,7 +48,7 @@ def compute_regionwise_covariance(s, region_assignments, sigmasq, length_scale, 
     
     # Compute full covariance matrix for all locations using Matern kernel
     #scaled_s = s / length_scale
-    matern_kernel = exponential_kernel(s, s, length_scale=length_scale)
+    matern_kernel = exponential_kernel(s, s, phi = phi)
     K = sigmasq * matern_kernel  # Scale by variance
     K += tausq * torch.eye(s.shape[0], device=s.device)  # Add noise term
     
@@ -131,19 +132,23 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-6):
     R_phi = torch.exp(-phi * Dist)
 
     # Optionally: Ensure R_phi is positive-definite
-    R_phi = nearest_pd_torch(R_phi, epsilon=eps)
+    #R_phi = nearest_pd_torch(R_phi, epsilon=eps)
 
     # Compute log(det(R_phi)) safely
     sign, logdet = torch.linalg.slogdet(R_phi)
     if sign <= 0:
         # Handle log of non-positive determinant safely
         logdet = torch.tensor(float('-inf'), device=R_phi.device)
+        R_phi += eps * torch.eye(R_phi.shape[0], device=R_phi.device)  # Regularization
 
     # Solve R_phi x = mean
     mu_W_flat = mu_W.flatten()
     V_W = Sigma_W + torch.outer(mu_W_flat, mu_W_flat)
 
+    
     R_phi_inv_mean = torch.linalg.solve(R_phi, V_W)
+    #R_phi_inv_mean = torch.linalg.pinv(R_phi) @ V_W
+
 
     # Compute exponent
     exponent = -0.5 * logdet - (lambda_a1 / (2 * lambda_b1)) * (torch.trace(R_phi_inv_mean))

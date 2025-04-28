@@ -137,10 +137,11 @@ locations = torch.tensor(s_jumbled_within_regions,dtype=torch.float32)
 
 # Compute distance matrix from locations
 Dist = torch.cdist(locations, locations, p=2)  # Pairwise distances
+Dist = (Dist + Dist.T) / 2  # Make it symmetric manually to avoid numerical asymmetry
 
 # Set optional args
 n_steps = 50
-n_phi_samples = 50
+n_phi_samples = 100
 n_piX_sample = 50
 n_piS_sample = 50
 
@@ -179,7 +180,9 @@ for tau in [0.05, 0.1, 0.2, 0.3,0.4, 0.5, 0.55]:
         pi_X_true = perm_matrix_x.T,
         pi_S_true = perm_matrix_s.T,
         VX_ub = 0.5,
-        VS_ub=0.5
+        VS_ub=0.5,
+        lr_piS=0.01,
+        lr_piX=0.01
     )
    
     # Save the model parameters to the result dictionary

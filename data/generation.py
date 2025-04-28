@@ -38,7 +38,7 @@ def generate_ordered_uniform_random_locations(n_i, x_min, x_max, y_min, y_max):
     Returns:
     - ordered_locations: A 2D array of n_i ordered points within the region.
     """
-    np.random.seed(42)  # Set seed for reproducibility
+    # Set seed for reproducibility
     # Generate n_i uniform random points in the given bounds
     x_coords = np.random.uniform(x_min, x_max, n_i)
     y_coords = np.random.uniform(y_min, y_max, n_i)
@@ -133,14 +133,16 @@ def generate_data(B, n_i, sigmasq, length_scale, nu, beta_true, tausq_true,seed=
     """
     N = B * n_i  # Total number of spatial locations
     
+    np.random.seed(seed)
+
     # Generate spatial locations s
     s, region_assignments = partition_domain_into_regions(B, n_i)
 
     # Generate covariates x(s)
-    np.random.seed(43)  # Set seed for reproducibility
+    #np.random.seed(43)  # Set seed for reproducibility
     x = np.random.rand(N, 1)  # Covariates for all locations
     
-    np.random.seed(seed)  # Set seed for reproducibility
+      # Set seed for reproducibility
     # Compute spatially correlated residuals w(s) using Matérn kernel
     if spatial == True:
         matern_kernel = sigmasq * skMatern(nu=nu, length_scale=length_scale)

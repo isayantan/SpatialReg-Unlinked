@@ -2,7 +2,7 @@
 #SBATCH --job-name=run_analysis
 #SBATCH --output=out/analysis_%A_%a.out
 #SBATCH --error=log/analysis_%A_%a.err
-#SBATCH --array=0-399 # 100 seeds * 4 n_i values = 400 total jobs
+#SBATCH --array=0-7 # 100 seeds * 4 n_i values = 400 total jobs
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -19,7 +19,7 @@ n_i_vals=(4 6 8 10)
 # Total combinations
 total_B=${#B_vals[@]}
 total_n_i=${#n_i_vals[@]}
-total_seed=100  # seeds from 1 to 100
+total_seed=2  # seeds from 1 to 100
 
 # SLURM index
 idx=$SLURM_ARRAY_TASK_ID

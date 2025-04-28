@@ -39,6 +39,8 @@ def VIGP_Unlinked(n_iter,
             pi_S_true = None,
             VX_ub= 2,
             VS_ub= 2,
+            lr_piX=0.1,
+            lr_piS=0.1
             ):
     
     # Prior hyperparameters
@@ -79,8 +81,8 @@ def VIGP_Unlinked(n_iter,
 
 
     # Define the optimizer
-    optimizer_piX = optim.AdamW(model_piX.parameters(), lr=0.1, weight_decay=1e-2)  
-    optimizer_piS = optim.AdamW(model_piS.parameters(), lr=0.1, weight_decay=1e-2)
+    optimizer_piX = optim.AdamW(model_piX.parameters(), lr=lr_piX, weight_decay=1e-2)  
+    optimizer_piS = optim.AdamW(model_piS.parameters(), lr=lr_piS, weight_decay=1e-2)
 
      
     for iter in tqdm(range(n_iter)):
@@ -129,7 +131,10 @@ def VIGP_Unlinked(n_iter,
         if(fix_Sigma_W == False):
             term1 = (lambda_a2 / lambda_b2) * torch.block_diag(*[V_S_star] * n_blocks)
             term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
-            Sigma_W = torch.linalg.pinv(term1 + term2, rtol = 1e-3)
+            Sigma_W_inv = (term1 + term2)
+            Sigma_W_inv = (Sigma_W_inv + Sigma_W_inv.T)/2
+            Sigma_W = torch.linalg.pinv(Sigma_W_inv, hermitian=True, rtol = 1e-4)
+            Sigma_W = (Sigma_W + Sigma_W.T)/2
         else:
             Sigma_W = Sigma_W_fixed
         
@@ -151,18 +156,21 @@ def VIGP_Unlinked(n_iter,
             
             Rphi_inv_sum = torch.zeros_like(Dist)
             phi_sum = 0 
+            importance_weights_sum = 0
             for i in range(n_phi_samples):
                 # Compute the weighted sum of phi_samples
                 if(importance_weights[i] > 10e-5):
                     # Compute the weighted inverse of R(phi)
-                    Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist))
+                    Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist), rtol=1e-4)
+                    Rphi_inv = (Rphi_inv + Rphi_inv.T)/2
                     Rphi_inv_sum += importance_weights[i] * Rphi_inv
+                    importance_weights_sum += importance_weights[i]
             
                 phi_sum += importance_weights[i] * phi_samples[i]
                 
-            mean_Rphi_inv = Rphi_inv_sum
-            mean_phi = phi_sum
-            mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
+            mean_Rphi_inv = Rphi_inv_sum/importance_weights_sum
+            mean_phi = phi_sum/importance_weights_sum
+            #mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
         else:
             mean_Rphi_inv = mean_Rphi_inv_fixed 
             mean_phi = phi_init   
@@ -188,11 +196,11 @@ def VIGP_Unlinked(n_iter,
                 #     print("\nCurrent VX:")
                 #     print(torch.exp(model_piX.VX.data))
                     
-                #     # Stopping rule: Stop if the loss change is below a threshold
-                #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-                #         print(f"Stopping early at step {step} due to minimal loss change.")
-                #         break
-                #     prev_loss = loss.item()
+                # Stopping rule: Stop if the loss change is below a threshold
+                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                    print(f"Stopping early at step {step} due to minimal loss change.")
+                    break
+                prev_loss = loss.item()
             
             #print("Pix_loss", loss.item())
 
@@ -224,11 +232,11 @@ def VIGP_Unlinked(n_iter,
                 #     print("\nCurrent VS:")
                 #     print(torch.exp(model_piS.VS.data))
 
-                #     # Stopping rule: Stop if the loss change is below a threshold
-                #     if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
-                #         print(f"Stopping early at step {step} due to minimal loss change.")
-                #         break
-                #     prev_loss = loss.item()
+                # Stopping rule: Stop if the loss change is below a threshold
+                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                    print(f"Stopping early at step {step} due to minimal loss change.")
+                    break
+                prev_loss = loss.item()
                 
             #print("PiS_loss", loss.item())
 

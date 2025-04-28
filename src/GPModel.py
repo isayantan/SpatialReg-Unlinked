@@ -9,7 +9,7 @@ class GPModel(nn.Module):
 
         # Learnable parameters
         self.nu = nn.Parameter(torch.tensor(0.5, device=device))
-        self.length_scale = nn.Parameter(torch.tensor(1.5, device=device))
+        self.phi = nn.Parameter(torch.tensor(0.5, device=device))
         self.tausq = nn.Parameter(torch.tensor(1.0, device=device))
         self.sigmasq = nn.Parameter(torch.tensor(2.0, device=device))
         self.beta = nn.Parameter(torch.zeros(input_dim, device=device))
@@ -29,5 +29,5 @@ class GPModel(nn.Module):
     def forward(self, s, x, y):
         n = y.shape[0]
         # Compute covariance matrix using Matern kernel
-        K = self.sigmasq * exponential_kernel(s, s, length_scale=self.length_scale) + self.tausq * torch.eye(n, device=self.device)
+        K = self.sigmasq * exponential_kernel(s, s, phi=self.phi) + self.tausq * torch.eye(n, device=self.device)
         return -self.GP_log_likelihood(y, s, x, self.beta, K)

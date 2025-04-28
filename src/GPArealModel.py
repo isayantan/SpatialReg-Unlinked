@@ -11,7 +11,7 @@ class GPArealModel(nn.Module):
 
         # Learnable parameters
         self.nu = nn.Parameter(torch.tensor(0.5, device=device))
-        self.length_scale = nn.Parameter(torch.tensor(1.5, device=device))
+        self.phi = nn.Parameter(torch.tensor(0.5, device=device))
         self.tausq = nn.Parameter(torch.tensor(1.0, device=device))
         self.sigmasq = nn.Parameter(torch.tensor(2.0, device=device))
         self.beta = nn.Parameter(torch.zeros(input_dim, device=device))
@@ -30,5 +30,5 @@ class GPArealModel(nn.Module):
 
     def forward(self, s, region_assignments, x, y):
         # Compute covariance matrix using Matern kernel
-        K = compute_regionwise_covariance(s, region_assignments, self.sigmasq, self.length_scale, self.nu, self.tausq)
+        K = compute_regionwise_covariance(s, region_assignments, self.sigmasq, self.phi, self.nu, self.tausq)
         return -self.GP_log_likelihood(y, s, x, self.beta, K)
