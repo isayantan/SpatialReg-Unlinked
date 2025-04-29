@@ -2,7 +2,7 @@
 #SBATCH --job-name=run_analysis
 #SBATCH --output=out/analysis_%A_%a.out
 #SBATCH --error=log/analysis_%A_%a.err
-#SBATCH --array=0-399 # 100 seeds * 4 n_i values = 400 total jobs
+#SBATCH --array=0-499 # 100 seeds * 4 n_i values = 400 total jobs
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -13,8 +13,8 @@ module load python/3
 which python
 
 # Define static parameter values
-B_vals=(100)
-n_i_vals=(4 6 8 10)
+B_vals=(49)
+n_i_vals=(4 6 8 10 20)
 
 # Total combinations
 total_B=${#B_vals[@]}

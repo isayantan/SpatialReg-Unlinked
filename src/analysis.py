@@ -66,13 +66,13 @@ for i in tqdm(range(niter_GP)):
     # Constrain sigmasq, length_scale, and tausq to be positive
     with torch.no_grad():
         model.sigmasq.clamp_(min=1e-6)
-        model.length_scale.clamp_(min=1e-6)
+        model.phi.clamp_(min=1e-6)
         model.tausq.clamp_(min=1e-6)
         
 # Save the model parameters
 model_params = {
     'nu': model.nu.item(),
-    'phi': 1/model.length_scale.item(),
+    'phi': model.phi.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
     'beta': model.beta.detach().cpu().numpy()
@@ -114,7 +114,7 @@ for i in tqdm(range(niter_GPAreal)):
 # Save the model parameters
 model_params = {
     'nu': model.nu.item(),
-    'phi': 1/model.length_scale.item(),
+    'phi': model.phi.item(),
     'sigmasq': model.sigmasq.item(),
     'tausq': model.tausq.item(),
     'beta': model.beta.detach().cpu().numpy()
