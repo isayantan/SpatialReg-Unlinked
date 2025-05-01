@@ -10,7 +10,6 @@ def VIGP_Unlinked(n_iter,
             X, Y, Dist, 
             n_steps=10, 
             phi_init=3,
-            phi_prior_ub= 10,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
@@ -40,17 +39,21 @@ def VIGP_Unlinked(n_iter,
             VX_ub= 2,
             VS_ub= 2,
             lr_piX=0.1,
-            lr_piS=0.1
+            lr_piS=0.1,
+            prior_parameters = {}
             ):
     
     # Prior hyperparameters
-    a1 = 0.1
-    b1 = 0.1
-    a2 = 0.1
-    b2 = 0.1
-    eta_X_sq = 0.1
-    eta_S_sq = 0.1
-    sigmasq_beta = 100
+    a1 = prior_parameters["a1"]
+    b1 = prior_parameters["b1"]
+    a2 = prior_parameters["a2"]
+    b2 = prior_parameters["b2"]
+    eta_X_sq = prior_parameters["eta_X_sq"]
+    eta_S_sq = prior_parameters["eta_S_sq"]
+    mu_beta = prior_parameters["mu_beta"]
+    sigmasq_beta = prior_parameters["sigmasq_beta"]
+    phi_prior_lb = prior_parameters["phi_prior_lb"]
+    phi_prior_ub = prior_parameters["phi_prior_ub"]
     # Phi_max = torch.sqrt(2)
     
     # Model parameters
@@ -97,7 +100,7 @@ def VIGP_Unlinked(n_iter,
         if(fix_mu_lambda_beta == False):
             residual = Y - (M_S_star @ mu_W.T).T
             X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
-            mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
+            mu_lambda_beta = sigmasq_lambda_beta * ((lambda_a2 / lambda_b2) * X_M_X_star_residual + mu_beta/sigmasq_beta)
         else:
             mu_lambda_beta = mu_lambda_beta_fixed
         
@@ -147,7 +150,7 @@ def VIGP_Unlinked(n_iter,
         # Compute the mean of R(phi)^-1
         # make this stable
         if(fix_mean_Rphi_inv == False):
-            phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
+            phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - phi_prior_lb) + phi_prior_lb
             # Calculate q_phi for each phi_sample
             q_phi_values = torch.tensor([compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1) for phi in phi_samples])
 
