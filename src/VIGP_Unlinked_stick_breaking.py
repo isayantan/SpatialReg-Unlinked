@@ -10,7 +10,6 @@ def VIGP_Unlinked(n_iter,
             X, Y, Dist, 
             n_steps=10, 
             phi_init=3,
-            phi_prior_ub= 10,
             n_phi_samples=100,
             n_piX_sample=10, 
             n_piS_sample=10,
@@ -40,17 +39,23 @@ def VIGP_Unlinked(n_iter,
             VX_ub= 2,
             VS_ub= 2,
             lr_piX=0.1,
-            lr_piS=0.1
+            lr_piS=0.1,
+            prior_parameters = {}
             ):
     
     # Prior hyperparameters
-    a1 = 0.1
-    b1 = 0.1
-    a2 = 0.1
-    b2 = 0.1
-    eta_X_sq = 0.1
-    eta_S_sq = 0.1
-    sigmasq_beta = 100
+    a1 = prior_parameters["a1"]
+    b1 = prior_parameters["b1"]
+    a2 = prior_parameters["a2"]
+    b2 = prior_parameters["b2"]
+    eta_X_sq = prior_parameters["eta_X_sq"]
+    eta_S_sq = prior_parameters["eta_S_sq"]
+    mu_beta = prior_parameters["mu_beta"]
+    sigmasq_beta = prior_parameters["sigmasq_beta"]
+    phi_prior_lb = prior_parameters["phi_prior_lb"]
+    phi_prior_ub = prior_parameters["phi_prior_ub"]
+    # Phi_max = torch.sqrt(2)
+    
     # Phi_max = torch.sqrt(2)
     
     # Model parameters
