@@ -102,7 +102,7 @@ def VIGP_Unlinked(n_iter,
         if(fix_mu_lambda_beta == False):
             residual = Y - (M_S_star @ mu_W.T).T
             X_M_X_star_residual = torch.einsum('bi,ij,bj->b', X, M_X_star.T, residual).sum()
-            mu_lambda_beta = sigmasq_lambda_beta * (lambda_a2 / lambda_b2) * X_M_X_star_residual
+            mu_lambda_beta = sigmasq_lambda_beta * ((lambda_a2 / lambda_b2) * X_M_X_star_residual + mu_beta/sigmasq_beta)
         else:
             mu_lambda_beta = mu_lambda_beta_fixed
         
@@ -152,7 +152,7 @@ def VIGP_Unlinked(n_iter,
         # Compute the mean of R(phi)^-1
         # make this stable
         if(fix_mean_Rphi_inv == False):
-            phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - (1 / torch.max(Dist))) + (1 / torch.max(Dist))
+            phi_samples = torch.rand(n_phi_samples) * (phi_prior_ub - phi_prior_lb) + phi_prior_lb
             # Calculate q_phi for each phi_sample
             q_phi_values = torch.tensor([compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1) for phi in phi_samples])
 
