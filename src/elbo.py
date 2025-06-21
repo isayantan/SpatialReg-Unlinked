@@ -40,7 +40,7 @@ class vi_piX(nn.Module):
             torch.manual_seed(i * seed)
             z = torch.randn(self.n_locations, self.n_locations)
             Phi = MX_tilde + torch.sqrt(torch.special.expit(self.VX)*(VX_ub-0.01) + 0.01) * z
-            round_Phi = round_to_perm((Phi - 0.95 * Phi.min()).detach().numpy())
+            round_Phi = round_to_perm((Phi).detach().numpy())
             current_piX = tau_X * Phi + (1 - tau_X) * torch.tensor(round_Phi, dtype=Phi.dtype)  # Access the current sample of piS
             current_M_X_star += current_piX
             current_piX_sq = current_piX.T @ current_piX
@@ -113,7 +113,7 @@ class vi_piS(nn.Module):
             torch.manual_seed(i * seed)
             z = torch.randn(self.n_locations, self.n_locations)
             Phi = MS_tilde + torch.sqrt(torch.special.expit(self.VS)*(VS_ub-0.01) + 0.01) * z
-            round_Phi = round_to_perm((Phi - 0.98 * Phi.min()).detach().numpy())
+            round_Phi = round_to_perm((Phi).detach().numpy())
             current_piS = tau_S * Phi + (1 - tau_S) * torch.tensor(round_Phi, dtype=Phi.dtype)  # Access the current sample of piS
 
             current_piS_sq = current_piS.T @ current_piS

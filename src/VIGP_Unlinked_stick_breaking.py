@@ -1,6 +1,6 @@
 import torch
 import torch.optim as optim
-from elbo import vi_piX, vi_piS
+from elbo_stick_breaking import vi_piX, vi_piS
 from tqdm import tqdm
 from utils import nearest_pd_torch, compute_q_phi, round_to_perm
 
@@ -36,8 +36,8 @@ def VIGP_Unlinked(n_iter,
             mean_Rphi_inv_fixed=None,
             pi_X_true = None,
             pi_S_true = None,
-            VX_ub= 0.5,
-            VS_ub= 0.5,
+            VX_ub= 2,
+            VS_ub= 2,
             lr_piX=0.1,
             lr_piS=0.1,
             prior_parameters = {}
@@ -54,6 +54,8 @@ def VIGP_Unlinked(n_iter,
     sigmasq_beta = prior_parameters["sigmasq_beta"]
     phi_prior_lb = prior_parameters["phi_prior_lb"]
     phi_prior_ub = prior_parameters["phi_prior_ub"]
+    # Phi_max = torch.sqrt(2)
+    
     # Phi_max = torch.sqrt(2)
     
     # Model parameters

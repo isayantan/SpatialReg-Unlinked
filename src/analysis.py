@@ -31,7 +31,7 @@ niter_GPAreal=3000
 niter_VI= 100
 
 # Load data from the specified path
-data_path = os.path.join('..', 'data', f'B_{B}_n_{n_i}', f'data_seed_{seed}.pt')
+data_path = os.path.join('..', 'data', 'small_beta', f'B_{B}_n_{n_i}', f'data_seed_{seed}.pt')
 data = torch.load(data_path)
 
 # Extract variables from the data dictionary
@@ -80,7 +80,6 @@ model_params = {
 
 # Save the model parameters to a file
 result['GPmodel'] = model_params
-
 
 
 # Train the model GPareal
@@ -145,7 +144,21 @@ n_phi_samples = 100
 n_piX_sample = 50
 n_piS_sample = 50
 
-for tau in [0.05, 0.1, 0.2, 0.3,0.4, 0.5, 0.55]:
+#uninformative prior
+prior_parameters = {
+    "a1": 0.1,
+    "b1": 0.1,
+    "a2": 0.1,  # Using the previous entry
+    "b2": 0.1,
+    "eta_X_sq": 0.1,
+    "eta_S_sq": 0.1,
+    "mu_beta": 0,
+    "sigmasq_beta": 100,
+    "phi_prior_lb": (1/torch.max(Dist)),
+    "phi_prior_ub":10
+}
+
+for tau in [0.2,0.4,0.6,0.8, 0.9]:
     tau_X = tau
     tau_S = tau
 
@@ -153,7 +166,6 @@ for tau in [0.05, 0.1, 0.2, 0.3,0.4, 0.5, 0.55]:
         n_iter=niter_VI,
         n_blocks=n_blocks,
         n_locations=n_locations,
-        phi_prior_ub=10,
         X=X,
         Y=Y,
         Dist=Dist,
@@ -182,7 +194,8 @@ for tau in [0.05, 0.1, 0.2, 0.3,0.4, 0.5, 0.55]:
         VX_ub = 0.5,
         VS_ub=0.5,
         lr_piS=0.01,
-        lr_piX=0.01
+        lr_piX=0.01,
+        prior_parameters=prior_parameters
     )
    
     # Save the model parameters to the result dictionary

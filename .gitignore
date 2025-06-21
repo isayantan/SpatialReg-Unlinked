@@ -4,6 +4,9 @@
 # ignore all .pt files
 *.pt
 
+#
+literature/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
