@@ -29,14 +29,16 @@ def generate_ordered_uniform_random_locations(n_i, x_min, x_max, y_min, y_max):
     return ordered_locations
 
 
-def generate_location_and_partitions(B, n_i):
+def generate_location_and_partitions(B, n_i, d_min=1):
     """
-    Partition the unit square (0,1) x (0,1) into B regions, then generate n_i uniformly distributed
-    points for each region and assign each point to the corresponding region.
+    Partition a square of size (0, d_min * sqrt(B)) x (0, d_min * sqrt(B)) into B regions.
+    Then generate n_i points in each region.
     """
     grid_size = int(torch.ceil(torch.sqrt(torch.tensor(B, dtype=torch.float32))).item())
-    x_divisions = torch.linspace(0, 1, grid_size + 1)
-    y_divisions = torch.linspace(0, 1, grid_size + 1)
+    region_length = d_min
+
+    x_divisions = torch.linspace(0, grid_size * region_length, grid_size + 1)
+    y_divisions = torch.linspace(0, grid_size * region_length, grid_size + 1)
 
     s = []
     region_assignments = []
@@ -59,7 +61,6 @@ def generate_location_and_partitions(B, n_i):
     s = torch.cat(s, dim=0)
     region_assignments = torch.tensor(region_assignments, dtype=torch.long)
     return s, region_assignments
-
 
 def generate_data(s, x, sigmasq, phi, beta_true, tausq_true, seed=42, spatial=True):
     """
