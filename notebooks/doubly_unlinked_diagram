@@ -1,0 +1,13 @@
+// Key Concept: Doubly Unlinked Structure
+digraph Doubly_Unlinked_Spatial_Regression {
+	nodesep=0.6 rankdir=LR splines=ortho
+	X [label="Covariate/Exposure (X)" shape=box]
+	Y [label="Outcome (Y)" shape=box]
+	u [label="Latent Domain (u)" shape=box]
+	Recover_Beta [label="Recover β" fillcolor="#ADD8E6" shape=doubleoctagon style=filled]
+	X -> Y [label="Linear Signal β" color=gray style=dashed weight=1]
+	u -> Y [label="Latent Dependence W(u)" color=gray style=dashed weight=1]
+	X -> Y [label="Broken Linkage (ΠX)" color=red dir=both headlabel=broken minlen=2 penwidth=2 style=solid taillabel=broken]
+	u -> Y [label="Broken Linkage (Πu)" color=red constraint=false dir=both headlabel=broken minlen=2 penwidth=2 style=solid taillabel=broken]
+	Y -> Recover_Beta [label="Inference Goal" color=black style=bold]
+}
