@@ -62,7 +62,7 @@ def VIGP_Unlinked(n_iter,
     mu_W = torch.zeros(n_blocks, n_locations)
     Sigma_W = torch.eye(n_blocks * n_locations) 
     R_phi = torch.exp(-phi_init * Dist)
-    mean_Rphi_inv = torch.linalg.inv(nearest_pd_torch(R_phi))
+    mean_Rphi_inv = torch.linalg.inv(nearest_pd_torch(R_phi,epsilon=0.01))
     # M_S_star = (1/n_locations) * torch.ones(n_locations, n_locations)
     # M_X_star = (1/n_locations) * torch.ones(n_locations, n_locations)
     # V_S_star = torch.eye(n_locations)

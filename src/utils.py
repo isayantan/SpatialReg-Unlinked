@@ -17,7 +17,7 @@ def exponential_kernel(X1, X2, phi=1.0, sigma=1.0):
     Args:
         X1 (torch.Tensor): Input tensor of shape (n, d).
         X2 (torch.Tensor): Input tensor of shape (m, d).
-        rho (float): Characteristic lengthscale parameter.
+        phi (float): Characteristic lengthscale parameter.
         sigma (float): Scaling factor (variance term).
 
     Returns:
@@ -112,7 +112,7 @@ def nearest_pd_torch(A, epsilon=1e-6):
 
     return A_pd
 
-def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-6):
+def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-3):
     """
     Compute q(phi) as defined by the given expression.
 
@@ -129,7 +129,9 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-6):
     """
     
     # Compute R(phi)
-    R_phi = torch.exp(-phi * Dist)
+    #R_phi = torch.exp(-phi * Dist)
+    #stabilize
+    R_phi = nearest_pd_torch(torch.exp(-phi*Dist), epsilon=eps)
 
     # Optionally: Ensure R_phi is positive-definite
     #R_phi = nearest_pd_torch(R_phi, epsilon=eps)
