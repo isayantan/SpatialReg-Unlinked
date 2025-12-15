@@ -61,7 +61,7 @@ def VIGP_Unlinked(n_iter,
     sigmasq_lambda_beta = 0.1
     mu_W = torch.zeros(n_blocks, n_locations)
     Sigma_W = torch.eye(n_blocks * n_locations) 
-    R_phi = torch.exp(-phi_init * Dist)
+    R_phi = torch.exp(-Dist/phi_init)
     mean_Rphi_inv = torch.linalg.inv(nearest_pd_torch(R_phi,epsilon=0.01))
     # M_S_star = (1/n_locations) * torch.ones(n_locations, n_locations)
     # M_X_star = (1/n_locations) * torch.ones(n_locations, n_locations)
@@ -164,7 +164,9 @@ def VIGP_Unlinked(n_iter,
                 # Compute the weighted sum of phi_samples
                 if(importance_weights[i] > 10e-5):
                     # Compute the weighted inverse of R(phi)
-                    Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist), rtol=1e-4)
+                    Rphi = nearest_pd_torch(torch.exp(-Dist/phi_samples[i]), epsilon=1e-3)
+                    Rphi_inv = torch.linalg.inv(Rphi)
+                    #Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist), rtol=1e-4)
                     Rphi_inv = (Rphi_inv + Rphi_inv.T)/2
                     Rphi_inv_sum += importance_weights[i] * Rphi_inv
                     importance_weights_sum += importance_weights[i]

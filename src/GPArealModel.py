@@ -11,7 +11,7 @@ class GPArealModel(nn.Module):
 
         # Learnable parameters
         self.nu = nn.Parameter(torch.tensor(0.5, device=device))
-        self.phi = nn.Parameter(torch.tensor(0.0003, device=device))
+        self.phi = nn.Parameter(torch.tensor(1.0, device=device))
         self.tausq = nn.Parameter(torch.tensor(1.0, device=device))
         self.sigmasq = nn.Parameter(torch.tensor(2.0, device=device))
         self.beta = nn.Parameter(torch.zeros(input_dim, device=device))

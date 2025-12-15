@@ -25,7 +25,7 @@ def exponential_kernel(X1, X2, phi=1.0, sigma=1.0):
     """
     dists = torch.cdist(X1, X2, p=2)  # Compute pairwise Euclidean distances
     dists = (dists + dists.T) / 2  # Ensure symmetry
-    return sigma * torch.exp(- (phi * dists))
+    return sigma * torch.exp(- ((1/phi)* dists))
 
 
 def compute_regionwise_covariance(s, region_assignments, sigmasq, phi, nu=0.5, tausq=1):
@@ -131,7 +131,7 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-3):
     # Compute R(phi)
     #R_phi = torch.exp(-phi * Dist)
     #stabilize
-    R_phi = nearest_pd_torch(torch.exp(-phi*Dist), epsilon=eps)
+    R_phi = nearest_pd_torch(torch.exp(-Dist/phi), epsilon=eps)
 
     # Optionally: Ensure R_phi is positive-definite
     #R_phi = nearest_pd_torch(R_phi, epsilon=eps)
