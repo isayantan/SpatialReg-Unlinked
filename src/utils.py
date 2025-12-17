@@ -131,31 +131,27 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-3):
     # Compute R(phi)
     #R_phi = torch.exp(-phi * Dist)
     #stabilize
-    R_phi = nearest_pd_torch(torch.exp(-Dist/phi), epsilon=eps)
-
-    # Optionally: Ensure R_phi is positive-definite
-    #R_phi = nearest_pd_torch(R_phi, epsilon=eps)
-
-    # Compute log(det(R_phi)) safely
-    sign, logdet = torch.linalg.slogdet(R_phi)
-    if sign <= 0:
-        # Handle log of non-positive determinant safely
-        logdet = torch.tensor(float('-inf'), device=R_phi.device)
-        R_phi += eps * torch.eye(R_phi.shape[0], device=R_phi.device)  # Regularization
-
-    # Solve R_phi x = mean
+    #R_phi = nearest_pd_torch(torch.exp(-Dist/phi), epsilon=eps)
+    #R_phi = nearest_pd_torch(torch.exp(-phi* Dist), epsilon=eps)
+    #Rphi = nearest_pd_torch(torch.exp(-(1/phi)* Dist), epsilon=eps)
+    
     mu_W_flat = mu_W.flatten()
     V_W = Sigma_W + torch.outer(mu_W_flat, mu_W_flat)
 
-    
-    R_phi_inv_mean = torch.linalg.solve(R_phi, V_W)
-    #R_phi_inv_mean = torch.linalg.pinv(R_phi) @ V_W
 
+    Rphi = torch.exp(-(1/phi)*Dist)
+    Rphi = (Rphi + Rphi.T)/2
+    eigvals, eigvecs = torch.linalg.eigh(Rphi)
 
-    # Compute exponent
-    exponent = -0.5 * logdet - (lambda_a1 / (2 * lambda_b1)) * (torch.trace(R_phi_inv_mean))
+    # Clip eigenvalues to be at least epsilon
+    eigvals_clipped = torch.clamp(eigvals, min=1e-3)
+    logdet = torch.sum(torch.log(eigvals_clipped))
+    Rphi_inv = eigvecs @ torch.diag(1/eigvals_clipped) @ eigvecs.T
+    Rphi_inv_vw = Rphi_inv @ V_W
+    exponent = -0.5 * logdet - (lambda_a1 / (2 * lambda_b1)) * (torch.trace(Rphi_inv_vw))
+
 
     # Return log of q_phi (numerically stable)
-    return exponent  # this is log(q_phi), better for log-domain work
+    return exponent, Rphi_inv  # this is log(q_phi), better for log-domain work
  
-    
+

@@ -9,9 +9,9 @@ class GPModel(nn.Module):
 
         # Learnable parameters
         self.nu = nn.Parameter(torch.tensor(0.5, device=device))
-        self.phi = nn.Parameter(torch.tensor(1.0, device=device))
-        self.tausq = nn.Parameter(torch.tensor(1.0, device=device))
-        self.sigmasq = nn.Parameter(torch.tensor(2.0, device=device))
+        self.logphi = nn.Parameter(torch.tensor(0.05, device=device))
+        self.logtausq = nn.Parameter(torch.tensor(0.05, device=device))
+        self.logsigmasq = nn.Parameter(torch.tensor(0.05, device=device))
         self.beta = nn.Parameter(torch.zeros(input_dim, device=device))
     
     def GP_log_likelihood(self, y, x, beta, K):
@@ -28,5 +28,11 @@ class GPModel(nn.Module):
     def forward(self, s, x, y):
         n = y.shape[0]
         # Compute covariance matrix using Matern kernel
-        K = self.sigmasq * exponential_kernel(s, s, phi=self.phi) + self.tausq * torch.eye(n, device=self.device)
+        dists = torch.cdist(s, s, p=2)  # Compute pairwise Euclidean distances
+        dists = (dists + dists.T) / 2  # Ensure symmetry
+        sigmasq=torch.exp(self.logsigmasq)
+        phi = torch.exp(self.logphi)
+        tausq = torch.exp(self.logtausq)
+        K = sigmasq * torch.exp(- ((1/phi)* dists)) + tausq * torch.eye(n, device=self.device)
+        #K = self.sigmasq * exponential_kernel(s, s, phi=self.phi) + self.tausq * torch.eye(n, device=self.device)
         return -self.GP_log_likelihood(y, x, self.beta, K)
