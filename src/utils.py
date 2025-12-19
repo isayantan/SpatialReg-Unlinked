@@ -139,7 +139,7 @@ def compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1, eps = 1e-3):
     V_W = Sigma_W + torch.outer(mu_W_flat, mu_W_flat)
 
 
-    Rphi = torch.exp(-(1/phi)*Dist)
+    Rphi = torch.exp(-(phi)*Dist)
     Rphi = (Rphi + Rphi.T)/2
     eigvals, eigvecs = torch.linalg.eigh(Rphi)
 

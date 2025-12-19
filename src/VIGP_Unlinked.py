@@ -170,13 +170,13 @@ def VIGP_Unlinked(n_iter,
                     #Rphi_inv = torch.linalg.pinv(torch.exp(-phi_samples[i] * Dist), rtol=1e-4)
                     Rphi_inv_sum += importance_weights[i] * q_phi_values[i][1]
                     importance_weights_sum += importance_weights[i]
-                    phi_sum += importance_weights[i] * (1/phi_samples[i])
+                    phi_sum += importance_weights[i] * (phi_samples[i])
             mean_Rphi_inv = Rphi_inv_sum/importance_weights_sum
             mean_phi = phi_sum/importance_weights_sum
             #mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
         else:
             mean_Rphi_inv = mean_Rphi_inv_fixed 
-            mean_phi = 1/phi_init   
+            mean_phi = phi_init   
         # print("mean_Rphi_inv:", mean_Rphi_inv)
 
         
@@ -253,7 +253,8 @@ def VIGP_Unlinked(n_iter,
             V_S_star = V_S_star_fixed
         
         print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | \n sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | \n lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
-        print(f"‣  E[1/ϕ]: {mean_phi:.4f} | "
+        print(f"‣  E[ϕ]: {mean_phi:.4f} | "
+              f"‣ E[Sigmasq*ϕ]: {(lambda_b1/(lambda_a1-1))*mean_phi:.4f} | "
               f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
         if pi_X_true is not None:
             est_perm_piX= round_to_perm(M_X_star.detach().numpy())
