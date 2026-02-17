@@ -275,6 +275,7 @@ def VIGP_Unlinked(n_iter,
         # compute the global elbo
         total_loss = 0
 
+        # log likelihood expectation term under variational distribution
         elbo_ll_term1 = - (a2 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(lambda_b2) - torch.digamma(lambda_a2))
         
         resid = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
@@ -295,8 +296,21 @@ def VIGP_Unlinked(n_iter,
         elbo_ll_term7 = model_piS.mean_log_term_sum
 
         # compute total loss
-        total_loss = elbo_ll_term1 + elbo_ll_term2 + elbo_ll_term3 + elbo_ll_term4 + elbo_ll_term5 + elbo_ll_term6 + elbo_ll_term7
-        
+        total_ll = elbo_ll_term1 + elbo_ll_term2 + elbo_ll_term3 + elbo_ll_term4 + elbo_ll_term5 + elbo_ll_term6 + elbo_ll_term7
+
+        # entropy under variational distribution
+        entropy_term1 = 0.5 * torch.slogdet(Sigma_W)[1]
+        entropy_term2 = 0.5 * torch.log(sigmasq_lambda_beta)
+        entropy_term3 = lambda_a1 + torch.log(lambda_b1) + torch.lgamma(lambda_a1) - (1 + lambda_a1) * torch.digamma(lambda_a1)
+        entropy_term4 = lambda_a2 + torch.log(lambda_b2) + torch.lgamma(lambda_a2) - (1 + lambda_a2) * torch.digamma(lambda_a2)
+        entropy_term5 = - mean_log_q_phi
+        # TODO: check if the values of V_X_star and V_S_star are too be squared or kept as it is.
+        entropy_term6 = (n_blocks * n_locations) ** 2 * (torch.log(tau_X) + 0.5 * V_X_star.abs().sum())
+        entropy_term7 = (n_blocks * n_locations) ** 2 * (torch.log(tau_S) + 0.5 * V_S_star.abs().sum())
+        total_entropy = entropy_term1 + entropy_term2 + entropy_term3 + entropy_term4 + entropy_term5 + entropy_term6 + entropy_term7
+
+        total_loss = total_ll + total_entropy
+                                                
         print(f"Total Loss: {torch.sqrt(total_loss/(n_locations * n_blocks)):.4f}")
         # Store the loss in a vector
         if iter == 0:
