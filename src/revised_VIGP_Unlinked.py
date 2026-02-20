@@ -217,9 +217,11 @@ def VIGP_Unlinked(n_iter,
             # Extract the updated parameters
             M_X_star = model_piX.current_M_X_star.clone().data 
             V_X_star = model_piX.current_V_X_star.clone().data
+            V_X = model_piX.VX.clone().data
         else:
             M_X_star = M_X_star_fixed
             V_X_star = V_X_star_fixed
+            V_X = torch.identity(n_locations)
 
         
         if(fix_piS == False):
@@ -254,9 +256,11 @@ def VIGP_Unlinked(n_iter,
         
             M_S_star = model_piS.current_M_S_star.clone().data
             V_S_star = model_piS.current_V_S_star.clone().data
+            V_S = model_piS.VS.clone().data
         else:
             M_S_star = M_S_star_fixed
             V_S_star = V_S_star_fixed
+            V_S = torch.identity(n_locations)
         
         print(f"Iter {iter+1}/{n_iter} | mu_lambda_beta: {mu_lambda_beta:.4f} | \n sigmasq_lambda_beta: {sigmasq_lambda_beta:.4f} | \n lambda_a1: {lambda_a1:.4f} | lambda_b1: {lambda_b1:.4f} | lambda_a2: {lambda_a2:.4f} | lambda_b2: {lambda_b2:.4f}")
         print(f"‣  E[ϕ]: {mean_phi:.4f} | "
@@ -304,18 +308,18 @@ def VIGP_Unlinked(n_iter,
         entropy_term3 = lambda_a1 + torch.log(lambda_b1) + torch.lgamma(lambda_a1) - (1 + lambda_a1) * torch.digamma(lambda_a1)
         entropy_term4 = lambda_a2 + torch.log(lambda_b2) + torch.lgamma(lambda_a2) - (1 + lambda_a2) * torch.digamma(lambda_a2)
         entropy_term5 = - mean_log_q_phi
-        # TODO: check if the values of V_X_star and V_S_star are too be squared or kept as it is.
-        entropy_term6 = (n_blocks * n_locations) ** 2 * (torch.log(tau_X) + 0.5 * V_X_star.abs().sum())
-        entropy_term7 = (n_blocks * n_locations) ** 2 * (torch.log(tau_S) + 0.5 * V_S_star.abs().sum())
+
+        entropy_term6 = (n_locations ** 2) * (torch.log(tau_X) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum())
+        entropy_term7 = (n_locations ** 2) * (torch.log(tau_S) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum())
         total_entropy = entropy_term1 + entropy_term2 + entropy_term3 + entropy_term4 + entropy_term5 + entropy_term6 + entropy_term7
 
         total_loss = total_ll + total_entropy
                                                 
-        print(f"Total Loss: {torch.sqrt(total_loss/(n_locations * n_blocks)):.4f}")
+        print(f"Total Loss: {total_loss.item():.4f}")
         # Store the loss in a vector
         if iter == 0:
             loss_vector = torch.zeros(n_iter)
-        loss_vector[iter] = total_loss/(n_locations * n_blocks)
+        loss_vector[iter] = total_loss.item()
         
 
 

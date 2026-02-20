@@ -146,7 +146,7 @@ class vi_piS(nn.Module):
             total_log_term_sum += total_log_term
 
             # Final terms
-            neg_log_tauS = (self.n_locations ** 2 ) * torch.log(torch.tensor(tau_S))
+            neg_log_tauS = (self.n_locations ** 2) * torch.log(torch.tensor(tau_S))
 
             # Update ELBO
             elbo += total_term1 + total_log_term + neg_log_tauS + 0.5* torch.log(torch.special.expit(self.VS)*(VS_ub-0.01) + 0.01).sum()
