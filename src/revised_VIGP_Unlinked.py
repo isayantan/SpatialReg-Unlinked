@@ -280,7 +280,7 @@ def VIGP_Unlinked(n_iter,
         total_loss = 0
 
         # log likelihood expectation term under variational distribution
-        elbo_ll_term1 = - (a2 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(lambda_b2) - torch.digamma(lambda_a2))
+        elbo_ll_term1 = - (a2 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(torch.tensor(lambda_b2)) - torch.digamma(torch.tensor(lambda_a2)))
         
         resid = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
         resid_sq = torch.trace(resid.T @ resid)  # (1, 1)
@@ -305,12 +305,12 @@ def VIGP_Unlinked(n_iter,
         # entropy under variational distribution
         entropy_term1 = 0.5 * torch.slogdet(Sigma_W)[1]
         entropy_term2 = 0.5 * torch.log(sigmasq_lambda_beta)
-        entropy_term3 = lambda_a1 + torch.log(lambda_b1) + torch.lgamma(lambda_a1) - (1 + lambda_a1) * torch.digamma(lambda_a1)
-        entropy_term4 = lambda_a2 + torch.log(lambda_b2) + torch.lgamma(lambda_a2) - (1 + lambda_a2) * torch.digamma(lambda_a2)
+        entropy_term3 = lambda_a1 + torch.log(torch.tensor(lambda_b1)) + torch.lgamma(torch.tensor(lambda_a1)) - (1 + lambda_a1) * torch.digamma(torch.tensor(lambda_a1))
+        entropy_term4 = lambda_a2 + torch.log(torch.tensor(lambda_b2)) + torch.lgamma(torch.tensor(lambda_a2)) - (1 + lambda_a2) * torch.digamma(torch.tensor(lambda_a2))
         entropy_term5 = - mean_log_q_phi
 
-        entropy_term6 = (n_locations ** 2) * (torch.log(tau_X) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum())
-        entropy_term7 = (n_locations ** 2) * (torch.log(tau_S) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum())
+        entropy_term6 = (n_locations ** 2) * (torch.log(torch.tensor(tau_X))) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum()
+        entropy_term7 = (n_locations ** 2) * (torch.log(torch.tensor(tau_S))) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum()
         total_entropy = entropy_term1 + entropy_term2 + entropy_term3 + entropy_term4 + entropy_term5 + entropy_term6 + entropy_term7
 
         total_loss = total_ll + total_entropy
@@ -320,6 +320,10 @@ def VIGP_Unlinked(n_iter,
         if iter == 0:
             loss_vector = torch.zeros(n_iter)
         loss_vector[iter] = total_loss.item()
+        #print relative change in loss in percentage
+        if iter > 0:
+            rel_change = (loss_vector[iter] - loss_vector[iter-1]) / (abs(loss_vector[iter-1]) + 1e-8) * 100
+            print(f"Relative change in total loss: {rel_change:.4e}%")
         
 
 
