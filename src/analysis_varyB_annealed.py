@@ -212,12 +212,13 @@ for tau in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         pi_S_true=perm_matrix_s.T,
         VX_ub=0.5, VS_ub=0.5,
         lr_piS=0.01, lr_piX=0.01,
-        prior_parameters=prior_parameters, elbo_W=5
+        prior_parameters=prior_parameters,
+        anneal_every=20, use_global_tau_anneal= True, elbo_W= 5
     )
     result[f'VIGP_unlinked_tau_{tau}'] = results_VI
 
 # --------- Save results ---------
-results_dir = os.path.join('..', 'data', 'results', 'vary_B2',
+results_dir = os.path.join('..', 'data', 'results', 'vary_B2_annealed',
                            f'B_{B_arg}_n_{n_i_arg}', phi_dir)
 os.makedirs(results_dir, exist_ok=True)
 result_path = os.path.join(results_dir, f'results_seed_{seed}.pt')

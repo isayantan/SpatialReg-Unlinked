@@ -467,10 +467,11 @@ def VIGP_Unlinked(n_iter,
             "mean_phi": mean_phi, 
             "loss_vector": loss_vector
         }
-        parameters.update({
-            "mu_W": mu_W,
-            "Sigma_W": Sigma_W,
-            "sigmasq_lambda_beta": sigmasq_lambda_beta,
-        })
+        # 
+        if warm_start: 
+            parameters.update({
+                "mu_W": mu_W,
+                "Sigma_W": Sigma_W
+            })
     return parameters
         
