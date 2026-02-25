@@ -1,4 +1,4 @@
-# analysis.py — tailored to your vary_B data layout
+# analysis.py — tailored to your vary_B2 (no SNR) data layout
 import sys
 import os
 import re
@@ -9,7 +9,7 @@ import numpy as np
 
 from GPModel import GPModel
 from GPArealModel import GPArealModel
-from VIGP_Unlinked import VIGP_Unlinked
+from revised_VIGP_Unlinked import VIGP_Unlinked
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 input_dim = 1
@@ -17,46 +17,48 @@ input_dim = 1
 # --------- CLI ---------
 # Usage:
 #   python analysis.py B n_i seed
-#   python analysis.py B n_i seed phi snr
+#   python analysis.py B n_i seed phi
 if len(sys.argv) < 4:
-    raise ValueError("Usage: python analysis.py B n_i seed [phi snr]")
+    raise ValueError("Usage: python analysis.py B n_i seed [phi]")
 
 B_arg   = int(sys.argv[1])
 n_i_arg = int(sys.argv[2])
 seed    = int(sys.argv[3])
 
 phi_cli = None
-snr_cli = None
-if len(sys.argv) >= 6:
+if len(sys.argv) >= 5:
     phi_cli = float(sys.argv[4])
-    snr_cli = float(sys.argv[5])
 
 # --------- Resolve data path ---------
-base_dir = os.path.join('..', 'data', 'vary_B', f'B_{B_arg}_n_{n_i_arg}')
+base_dir = os.path.join('..', 'data', 'vary_B2', f'B_{B_arg}_n_{n_i_arg}')
 
-def autodetect_phi_snr(folder):
+def autodetect_phi(folder):
     if not os.path.isdir(folder):
         raise FileNotFoundError(f"Folder not found: {folder}")
-    candidates = [d for d in os.listdir(folder) if os.path.isdir(os.path.join(folder, d)) and d.startswith('phi_')]
+    candidates = [
+        d for d in os.listdir(folder)
+        if os.path.isdir(os.path.join(folder, d)) and d.startswith('phi_')
+    ]
     if len(candidates) == 0:
-        raise FileNotFoundError(f"No phi/snr subfolders found in {folder}")
+        raise FileNotFoundError(f"No phi subfolders found in {folder}")
     if len(candidates) > 1:
-        # Try to pick unique; otherwise ask user to pass explicitly
-        raise ValueError(f"Multiple phi/snr folders found in {folder}: {candidates}. "
-                         f"Re-run with explicit phi and snr.")
-    d = candidates[0]  # e.g., 'phi_2.0_snr_1.0e+00'
-    m = re.match(r'^phi_([^_]+)_snr_([^/]+)$', d)
+        raise ValueError(
+            f"Multiple phi folders found in {folder}: {candidates}. "
+            f"Re-run with explicit phi."
+        )
+    d = candidates[0]  # e.g., 'phi_2.0'
+    m = re.match(r'^phi_([^/]+)$', d)
     if not m:
-        raise ValueError(f"Cannot parse phi/snr from folder name: {d}")
-    return float(m.group(1)), float(m.group(2)), d
+        raise ValueError(f"Cannot parse phi from folder name: {d}")
+    return float(m.group(1)), d
 
-if phi_cli is None or snr_cli is None:
-    phi_resolved, snr_resolved, phi_snr_dir = autodetect_phi_snr(base_dir)
+if phi_cli is None:
+    phi_resolved, phi_dir = autodetect_phi(base_dir)
 else:
-    phi_resolved, snr_resolved = phi_cli, snr_cli
-    phi_snr_dir = f"phi_{phi_resolved}_snr_{snr_resolved:.1e}"
+    phi_resolved = phi_cli
+    phi_dir = f"phi_{phi_resolved}"
 
-data_path = os.path.join(base_dir, phi_snr_dir, f"data_seed_{seed}.pt")
+data_path = os.path.join(base_dir, phi_dir, f"data_seed_{seed}.pt")
 
 # --------- Load data ---------
 data = torch.load(data_path, map_location=device)
@@ -79,7 +81,6 @@ phi_true     = float(data['phi_true'])
 beta_true    = float(data['beta_true'])
 nu_true      = float(data['nu_true'])
 tausq_true   = float(data['tausq_true'])
-snr_true     = float(data.get('snr', snr_resolved))
 
 # Sanity: unique region count
 unique_regions = torch.unique(region_assignments)
@@ -126,12 +127,11 @@ result['GPmodel'] = {
     'beta': gp.beta.detach().float().cpu().numpy(),
     'true_params': {
         'nu_true': nu_true, 'phi_true': phi_true, 'sigmasq_true': sigmasq_true,
-        'tausq_true': tausq_true, 'beta_true': beta_true, 'snr_true': snr_true
+        'tausq_true': tausq_true, 'beta_true': beta_true
     }
 }
 
 # ===================== 2) Areal GP (region-averaged) =====================
-# Region-wise averages
 ybar = torch.zeros(n_blocks, device=device)
 xbar = torch.zeros(n_blocks, input_dim, device=device)
 for i, region in enumerate(unique_regions):
@@ -169,7 +169,7 @@ Dist = torch.cdist(locations, locations, p=2)
 Dist = (Dist + Dist.T) / 2
 
 n_steps = 50
-n_phi_samples = 100
+n_phi_samples = 120
 n_piX_sample = 50
 n_piS_sample = 50
 
@@ -182,7 +182,7 @@ prior_parameters = {
     "phi_prior_ub": 10.0
 }
 
-for tau in [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+for tau in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     results_VI = VIGP_Unlinked(
         n_iter=niter_VI,
         n_blocks=n_blocks,
@@ -205,7 +205,7 @@ for tau in [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         M_S_star_fixed=perm_matrix_s.T,
         V_X_star_fixed=torch.eye(n_locations, n_locations, device=device),
         V_S_star_fixed=torch.eye(n_locations, n_locations, device=device),
-        phi_init=0.5,
+        phi_init=0.1,
         mean_Rphi_inv_fixed=torch.linalg.inv(torch.exp(-4 * Dist)),
         fix_mean_Rphi_inv=False,
         pi_X_true=perm_matrix_x.T,
@@ -217,9 +217,10 @@ for tau in [0.1,0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
     result[f'VIGP_unlinked_tau_{tau}'] = results_VI
 
 # --------- Save results ---------
-results_dir = os.path.join('..', 'data', 'results', 'vary_B',
-                           f'B_{B_arg}_n_{n_i_arg}', phi_snr_dir)
+results_dir = os.path.join('..', 'data', 'results', 'vary_B2',
+                           f'B_{B_arg}_n_{n_i_arg}', phi_dir)
 os.makedirs(results_dir, exist_ok=True)
 result_path = os.path.join(results_dir, f'results_seed_{seed}.pt')
 torch.save(result, result_path)
+print(f"[OK] Loaded data from {data_path}")
 print(f"[OK] Saved results to {result_path}")

@@ -40,7 +40,13 @@ def VIGP_Unlinked(n_iter,
             VS_ub= 0.5,
             lr_piX=0.1,
             lr_piS=0.1,
-            prior_parameters = {}
+            prior_parameters = {},
+            tol=0.01,
+            use_global_tau_anneal=False, 
+            anneal_every=100, 
+            elbo_W=10,
+            init_state=None,        # dict of warm-start values
+            warm_start=False,
             ):
     
     # Prior hyperparameters
@@ -84,10 +90,63 @@ def VIGP_Unlinked(n_iter,
     M_S_star = model_piS.current_M_S_star.clone().data
     V_S_star = model_piS.current_V_S_star.clone().data
 
+    # -------------------------
+# Warm start from previous cycle
+# -------------------------
+    if warm_start and (init_state is not None):
+        if "mu_lambda_beta" in init_state:
+            mu_lambda_beta = init_state["mu_lambda_beta"].detach().clone()
+        if "sigmasq_lambda_beta" in init_state:
+            sigmasq_lambda_beta = init_state["sigmasq_lambda_beta"].detach().clone()
+        if "mu_W" in init_state:
+            mu_W = init_state["mu_W"].detach().clone()
+        if "Sigma_W" in init_state:
+            Sigma_W = init_state["Sigma_W"].detach().clone()
+        if "mean_Rphi_inv" in init_state:
+            mean_Rphi_inv = init_state["mean_Rphi_inv"].detach().clone()
+
+        # warm start soft-perm moments
+        if "M_X_star" in init_state:
+            M_X_star = init_state["M_X_star"].detach().clone()
+            # also seed the module if it supports it
+            if hasattr(model_piX, "current_M_X_star"):
+                model_piX.current_M_X_star.data.copy_(M_X_star)
+        if "V_X_star" in init_state:
+            V_X_star = init_state["V_X_star"].detach().clone()
+            if hasattr(model_piX, "current_V_X_star"):
+                model_piX.current_V_X_star.data.copy_(V_X_star)
+
+        if "M_S_star" in init_state:
+            M_S_star = init_state["M_S_star"].detach().clone()
+            if hasattr(model_piS, "current_M_S_star"):
+                model_piS.current_M_S_star.data.copy_(M_S_star)
+        if "V_S_star" in init_state:
+            V_S_star = init_state["V_S_star"].detach().clone()
+            if hasattr(model_piS, "current_V_S_star"):
+                model_piS.current_V_S_star.data.copy_(V_S_star)
+
 
     # Define the optimizer
     optimizer_piX = optim.AdamW(model_piX.parameters(), lr=lr_piX, weight_decay=1e-2)  
     optimizer_piS = optim.AdamW(model_piS.parameters(), lr=lr_piS, weight_decay=1e-2)
+
+    # initial temperatures (use your function args as starting values)
+    tau0_X = float(tau_X)
+    tau0_S = float(tau_S)
+
+    # minimum temperatures (floor)
+    tau_min_X = 0.05
+    tau_min_S = 0.05
+
+    # decay per *global step* (NOT per outer iter)
+    # typical: 0.995 to 0.999; smaller => faster anneal
+    alpha_X = 0.995
+    alpha_S = 0.995
+
+    global_step = 0 
+
+    prev_loss_piX= None
+    prev_loss_piS = None
 
      
     for iter in tqdm(range(n_iter)):
@@ -215,12 +274,18 @@ def VIGP_Unlinked(n_iter,
         if(fix_piX== False):
             # Minimize the model for piX
             for step in range(n_steps):
+                if use_global_tau_anneal:
+                    tau_X_t = max(tau_min_X, tau0_X * (alpha_X ** (global_step/anneal_every)))
+                else:
+                    tau_X_t = tau_X
                 optimizer_piX.zero_grad()  # Clear gradients
-                loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X, 
+                loss = model_piX(Y, X, mu_lambda_beta, sigmasq_lambda_beta, M_S_star, mu_W, eta_X_sq, lambda_a2, lambda_b2, tau_X_t, 
                                 n_piX_sample,VX_ub= VX_ub, seed=seed)
                 #torch.autograd.set_detect_anomaly(True)  # Enable anomaly detection
                 loss.backward()  # Compute gradients
                 optimizer_piX.step()  # Update parameters
+
+                global_step += 1
 
                 # # Print loss every 100 steps
                 # if step % 1 == 0:
@@ -232,10 +297,10 @@ def VIGP_Unlinked(n_iter,
                 #     print(torch.exp(model_piX.VX.data))
                     
                 # Stopping rule: Stop if the loss change is below a threshold
-                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                if step > 0 and abs(prev_loss_piX - loss.item()) < 1e-4:
                     print(f"Stopping early at step {step} due to minimal loss change.")
                     break
-                prev_loss = loss.item()
+                prev_loss_piX = loss.item()
             
             #print("Pix_loss", loss.item())
 
@@ -252,12 +317,18 @@ def VIGP_Unlinked(n_iter,
         if(fix_piS == False):
             # Minimize the model for piS
             for step in range(n_steps):
+                if use_global_tau_anneal:
+                    tau_S_t = max(tau_min_S, tau0_S * (alpha_S ** (global_step/anneal_every)))
+                else:
+                    tau_S_t = tau_S
                 optimizer_piS.zero_grad()  # Clear gradients
                 loss = model_piS(Y, X, mu_lambda_beta, M_X_star, lambda_a2, lambda_b2,
-                                mu_W, Sigma_W, eta_S_sq, tau_S, n_piS_sample, VS_ub = VS_ub, 
+                                mu_W, Sigma_W, eta_S_sq, tau_S_t, n_piS_sample, VS_ub = VS_ub, 
                                 seed=seed)
                 loss.backward()  # Compute gradients
                 optimizer_piS.step()  # Update parameters
+
+                global_step += 1
 
                 # # Print loss every step (or change 1 to 100 if you want sparser output)
                 # if step % 1 == 0:
@@ -269,10 +340,10 @@ def VIGP_Unlinked(n_iter,
                 #     print(torch.exp(model_piS.VS.data))
 
                 # Stopping rule: Stop if the loss change is below a threshold
-                if step > 0 and abs(prev_loss - loss.item()) < 1e-4:
+                if step > 0 and abs(prev_loss_piS - loss.item()) < 1e-4:
                     print(f"Stopping early at step {step} due to minimal loss change.")
                     break
-                prev_loss = loss.item()
+                prev_loss_piS = loss.item()
                 
             #print("PiS_loss", loss.item())
 
@@ -300,6 +371,9 @@ def VIGP_Unlinked(n_iter,
             correct_permutations = torch.sum(torch.as_tensor(est_perm_piS) * pi_S_true)
             print(f"Number of correct permutations recognized for piS: {correct_permutations}")
         
+        if use_global_tau_anneal:
+            # this prints the last used values in the inner loops (tau_X_t, tau_S_t)
+            print(f"[anneal] global_step={global_step} | tau_X_t={tau_X_t:.4f} | tau_S_t={tau_S_t:.4f}")
 
         # compute the global elbo
         total_loss = 0
@@ -334,8 +408,8 @@ def VIGP_Unlinked(n_iter,
         entropy_term4 = lambda_a2 + torch.log(torch.as_tensor(lambda_b2)) + torch.lgamma(torch.as_tensor(lambda_a2)) - (1 + lambda_a2) * torch.digamma(torch.as_tensor(lambda_a2))
         entropy_term5 = logZ_trap
 
-        entropy_term6 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_X))) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum()
-        entropy_term7 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_S))) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum()
+        entropy_term6 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_X_t))) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum()
+        entropy_term7 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_S_t))) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum()
         total_entropy = entropy_term1 + entropy_term2 + entropy_term3 + entropy_term4 + entropy_term5 + entropy_term6 + entropy_term7
 
         total_loss = total_ll + total_entropy
@@ -350,9 +424,20 @@ def VIGP_Unlinked(n_iter,
             rel_change = (loss_vector[iter] - loss_vector[iter-1]) / (abs(loss_vector[iter-1]) + 1e-8) * 100
             print(f"Relative change in total ELBO: {rel_change:.4e}%")
 
-        if iter > 0 and 0 < rel_change < 0.2:
-            print(f"Stopping: relative change in ELBO is {rel_change:.4e}%")
-            break
+        W = elbo_W                # window size (iterations)
+        tol_pct = tol          # reuse your tol, interpreted as percent (e.g., 0.2 means 0.2%)
+        min_iter = W+1       # don't even check until we have enough history
+
+        if iter >= min_iter:
+            curr_avg = loss_vector[iter-W:iter].mean()
+            prev_avg = loss_vector[iter-W-1:iter-1].mean()
+            rel_impr = (curr_avg - prev_avg) / (torch.abs(prev_avg) + 1e-8) * 100.0
+
+            print(f"Smoothed ELBO rel_impr over last {W}: {rel_impr.item():.4e}%")
+
+            if rel_impr.item() >= 0 and rel_impr.item() < tol_pct:
+                print(f"Stopping: smoothed ELBO improvement is {rel_impr.item():.4e}% (< {tol_pct}%)")
+                break
         
 
 
@@ -380,7 +465,12 @@ def VIGP_Unlinked(n_iter,
             "lambda_a2": lambda_a2,
             "lambda_b2": lambda_b2,
             "mean_phi": mean_phi, 
-            "loss_vector": loss_vector,
+            "loss_vector": loss_vector
         }
+        parameters.update({
+            "mu_W": mu_W,
+            "Sigma_W": Sigma_W,
+            "sigmasq_lambda_beta": sigmasq_lambda_beta,
+        })
     return parameters
         

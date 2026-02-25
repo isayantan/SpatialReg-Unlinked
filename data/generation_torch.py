@@ -62,6 +62,18 @@ def generate_location_and_partitions(B, n_i, d_min=1):
     region_assignments = torch.tensor(region_assignments, dtype=torch.long)
     return s, region_assignments
 
+def near_pd_eig(S, eps=1e-6):
+    """
+    Project a symmetric matrix to SPD by eigenvalue clipping.
+    Returns SPD matrix close to S in Frobenius norm among those with eig>=eps.
+    """
+    S = 0.5 * (S + S.T)  # ensure symmetry
+    evals, evecs = torch.linalg.eigh(S)  # for symmetric matrices
+    evals_clipped = torch.clamp(evals, min=eps)
+    S_spd = (evecs * evals_clipped) @ evecs.T
+    S_spd = 0.5 * (S_spd + S_spd.T)  # re-symmetrize for safety
+    return S_spd
+
 def generate_data(s, x, sigmasq, phi, beta_true, tausq_true, seed=42, spatial=True):
     """
     Generates spatial data for a full region first, then assigns regions.
@@ -71,6 +83,7 @@ def generate_data(s, x, sigmasq, phi, beta_true, tausq_true, seed=42, spatial=Tr
     if spatial:
         K = sigmasq * exponential_kernel(s, s, phi)
         K = (K + (K.T))/2
+        K = near_pd_eig(K, eps=1e-6) 
         w = torch.tensor(torch.distributions.MultivariateNormal(torch.zeros(N), K).sample())
     else:
         w = torch.zeros(N)
