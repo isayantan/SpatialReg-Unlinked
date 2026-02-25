@@ -61,7 +61,7 @@ def VIGP_Unlinked(n_iter,
     sigmasq_lambda_beta = 0.1
     mu_W = torch.zeros(n_blocks, n_locations)
     Sigma_W = torch.eye(n_blocks * n_locations) 
-    Rphi = torch.exp(-(1/phi_init)*Dist)
+    Rphi = torch.exp(-(phi_init)*Dist)
     #R_phi = torch.exp(-phi_init * Dist)
 
     mean_Rphi_inv = torch.linalg.inv(nearest_pd_torch(Rphi,epsilon=0.01))
@@ -138,8 +138,13 @@ def VIGP_Unlinked(n_iter,
             term2 = (lambda_a1 / lambda_b1) * mean_Rphi_inv
             Sigma_W_inv = (term1 + term2)
             Sigma_W_inv = (Sigma_W_inv + Sigma_W_inv.T)/2
-            Sigma_W = torch.linalg.pinv(Sigma_W_inv, hermitian=True, rtol = 1e-4)
-            Sigma_W = (Sigma_W + Sigma_W.T)/2
+            eigvals, eigvecs = torch.linalg.eigh(Sigma_W_inv)
+            eigvals_clamped = torch.clamp(eigvals, min=1e-3)
+            Sigma_W = eigvecs @ torch.diag(1/eigvals_clamped) @ eigvecs.T
+            #Sigma_W = torch.linalg.pinv(Sigma_W_inv, hermitian=True, rtol=1e-4)
+            Sigma_W = (Sigma_W + Sigma_W.T) / 2
+            #Sigma_W = torch.linalg.pinv(Sigma_W_inv, hermitian=True, rtol = 1e-4)
+            #Sigma_W = (Sigma_W + Sigma_W.T)/2
         else:
             Sigma_W = Sigma_W_fixed
         
@@ -160,11 +165,11 @@ def VIGP_Unlinked(n_iter,
             q_phi_values = [compute_q_phi(phi, Dist, mu_W, Sigma_W, lambda_a1, lambda_b1) for phi in phi_samples]
 
             # Normalize the importance weights
-            importance_weights = torch.nn.functional.softmax(torch.tensor([q_phi_values[x][0] for x in range(0, n_phi_samples)]), dim=0)
+            importance_weights = torch.nn.functional.softmax(torch.as_tensor([q_phi_values[x][0] for x in range(0, n_phi_samples)]), dim=0)
             Rphi_inv_sum = torch.zeros_like(Dist)
             phi_sum = 0 
             importance_weights_sum = 0
-            log_q_phi_sum = 0
+            #log_q_phi_sum = 0
             for i in range(n_phi_samples):
                 if(importance_weights[i] > 1e-5):
                     # Compute the weighted inverse of R(phi)
@@ -174,11 +179,31 @@ def VIGP_Unlinked(n_iter,
                     phi_sum += importance_weights[i] * (phi_samples[i])
 
                     # compute the weighted sum of log(q_phi)
-                    log_q_phi_sum += importance_weights[i] * q_phi_values[i][0]
+                    #log_q_phi_sum += importance_weights[i] * q_phi_values[i][0]
 
             mean_Rphi_inv = Rphi_inv_sum/importance_weights_sum
             mean_phi = phi_sum/importance_weights_sum
-            mean_log_q_phi = log_q_phi_sum/importance_weights_sum
+            #mean_log_q_phi = log_q_phi_sum/importance_weights_sum
+
+            #calculate normalizing constant for q_phi 
+            log_q = torch.as_tensor([q_phi_values[x][0] for x in range(n_phi_samples)],
+                     device=Dist.device, dtype=Dist.dtype)
+
+            # sort by phi for trapezoid rule
+            phi_sorted, idx = torch.sort(phi_samples)
+            log_q_sorted = log_q[idx]
+
+            # compute log f = log(exp(log_q)) = log_q, but stabilize exp via log-sum-exp shift
+            m = torch.max(log_q_sorted)
+            f_shifted = torch.exp(log_q_sorted - m)   # proportional to exp(log_q)
+
+            # trapezoid integration on irregular grid
+            dphi = phi_sorted[1:] - phi_sorted[:-1]   # (n-1,)
+            trap_int_shifted = torch.sum(0.5 * (f_shifted[:-1] + f_shifted[1:]) * dphi)
+
+            # normalizing constant estimate (and its log)
+            #Z_trap = trap_int_shifted * torch.exp(m)
+            logZ_trap = torch.log(trap_int_shifted + 1e-30) + m
             #mean_Rphi_inv = nearest_pd_torch(mean_Rphi_inv)
 
         else:
@@ -268,11 +293,11 @@ def VIGP_Unlinked(n_iter,
               f"‣ ||mu_W||: {torch.norm(mu_W):.4f}")
         if pi_X_true is not None:
             est_perm_piX= round_to_perm(M_X_star.detach().numpy())
-            correct_permutations = torch.sum(torch.tensor(est_perm_piX) * pi_X_true)
+            correct_permutations = torch.sum(torch.as_tensor(est_perm_piX) * pi_X_true)
             print(f"Number of correct permutations recognized for piX: {correct_permutations}")
         if pi_S_true is not None:
             est_perm_piS= round_to_perm(M_S_star.detach().numpy())
-            correct_permutations = torch.sum(torch.tensor(est_perm_piS) * pi_S_true)
+            correct_permutations = torch.sum(torch.as_tensor(est_perm_piS) * pi_S_true)
             print(f"Number of correct permutations recognized for piS: {correct_permutations}")
         
 
@@ -280,7 +305,7 @@ def VIGP_Unlinked(n_iter,
         total_loss = 0
 
         # log likelihood expectation term under variational distribution
-        elbo_ll_term1 = - (a2 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(torch.tensor(lambda_b2)) - torch.digamma(torch.tensor(lambda_a2)))
+        elbo_ll_term1 = - (a2 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(torch.as_tensor(lambda_b2)) - torch.digamma(torch.as_tensor(lambda_a2)))
         
         resid = Y - mu_lambda_beta * (M_X_star @ X.T).T - (M_S_star @ mu_W.T).T
         resid_sq = torch.trace(resid.T @ resid)  # (1, 1)
@@ -293,7 +318,7 @@ def VIGP_Unlinked(n_iter,
         elbo_ll_term2 = - (b2 + 0.5 * resid_sq) * (lambda_a2 / lambda_b2)   # (1, 1)
         elbo_ll_term3 = - (b1 * lambda_a1)/ lambda_b1
         elbo_ll_term4 = - (mu_lambda_beta ** 2 + sigmasq_lambda_beta)/ (2 * sigmasq_beta)   # (1, 1)
-        elbo_ll_term5 = - mean_log_q_phi
+        elbo_ll_term5= -(a1 + 0.5 * (n_blocks * n_locations) + 1) * (torch.log(torch.as_tensor(lambda_b1)) - torch.digamma(torch.as_tensor(lambda_a1)))
 
         # compute elbo term 6 and 7
         elbo_ll_term6 = model_piX.mean_log_term_sum
@@ -305,17 +330,17 @@ def VIGP_Unlinked(n_iter,
         # entropy under variational distribution
         entropy_term1 = 0.5 * torch.slogdet(Sigma_W)[1]
         entropy_term2 = 0.5 * torch.log(sigmasq_lambda_beta)
-        entropy_term3 = lambda_a1 + torch.log(torch.tensor(lambda_b1)) + torch.lgamma(torch.tensor(lambda_a1)) - (1 + lambda_a1) * torch.digamma(torch.tensor(lambda_a1))
-        entropy_term4 = lambda_a2 + torch.log(torch.tensor(lambda_b2)) + torch.lgamma(torch.tensor(lambda_a2)) - (1 + lambda_a2) * torch.digamma(torch.tensor(lambda_a2))
-        entropy_term5 = - mean_log_q_phi
+        entropy_term3 = lambda_a1 + torch.log(torch.as_tensor(lambda_b1)) + torch.lgamma(torch.as_tensor(lambda_a1)) - (1 + lambda_a1) * torch.digamma(torch.as_tensor(lambda_a1))
+        entropy_term4 = lambda_a2 + torch.log(torch.as_tensor(lambda_b2)) + torch.lgamma(torch.as_tensor(lambda_a2)) - (1 + lambda_a2) * torch.digamma(torch.as_tensor(lambda_a2))
+        entropy_term5 = logZ_trap
 
-        entropy_term6 = (n_locations ** 2) * (torch.log(torch.tensor(tau_X))) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum()
-        entropy_term7 = (n_locations ** 2) * (torch.log(torch.tensor(tau_S))) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum()
+        entropy_term6 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_X))) + 0.5* torch.log(torch.special.expit(V_X)*(VX_ub-0.01) + 0.01).sum()
+        entropy_term7 = (n_locations ** 2) * (torch.log(torch.as_tensor(tau_S))) + 0.5* torch.log(torch.special.expit(V_S)*(VS_ub-0.01) + 0.01).sum()
         total_entropy = entropy_term1 + entropy_term2 + entropy_term3 + entropy_term4 + entropy_term5 + entropy_term6 + entropy_term7
 
         total_loss = total_ll + total_entropy
                                                 
-        print(f"Total Loss: {total_loss.item():.4f}")
+        print(f"Total ELBO: {total_loss.item():.4f}")
         # Store the loss in a vector
         if iter == 0:
             loss_vector = torch.zeros(n_iter)
@@ -323,7 +348,11 @@ def VIGP_Unlinked(n_iter,
         #print relative change in loss in percentage
         if iter > 0:
             rel_change = (loss_vector[iter] - loss_vector[iter-1]) / (abs(loss_vector[iter-1]) + 1e-8) * 100
-            print(f"Relative change in total loss: {rel_change:.4e}%")
+            print(f"Relative change in total ELBO: {rel_change:.4e}%")
+
+        if iter > 0 and 0 < rel_change < 0.2:
+            print(f"Stopping: relative change in ELBO is {rel_change:.4e}%")
+            break
         
 
 
