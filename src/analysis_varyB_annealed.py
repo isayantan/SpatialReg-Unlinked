@@ -114,16 +114,16 @@ for _ in tqdm(range(niter_GP), desc="Train GPModel (oracle)"):
     loss = gp(s, x, y)
     loss.backward()
     opt.step()
-    with torch.no_grad():
-        gp.sigmasq.clamp_(min=1e-6)
-        gp.phi.clamp_(min=1e-6)
-        gp.tausq.clamp_(min=1e-6)
+    # with torch.no_grad():
+    #     gp.sigmasq.clamp_(min=1e-6)
+    #     gp.phi.clamp_(min=1e-6)
+    #     gp.tausq.clamp_(min=1e-6)
 
 result['GPmodel'] = {
     'nu': float(gp.nu.item()),
-    'phi': float(gp.phi.item()),
-    'sigmasq': float(gp.sigmasq.item()),
-    'tausq': float(gp.tausq.item()),
+    'phi': float(np.exp(gp.logphi.item())),
+    'sigmasq': float(np.exp(gp.logsigmasq.item())),
+    'tausq': float(np.exp(gp.logtausq.item())),
     'beta': gp.beta.detach().float().cpu().numpy(),
     'true_params': {
         'nu_true': nu_true, 'phi_true': phi_true, 'sigmasq_true': sigmasq_true,
@@ -132,6 +132,7 @@ result['GPmodel'] = {
 }
 
 # ===================== 2) Areal GP (region-averaged) =====================
+# Region-wise averages
 ybar = torch.zeros(n_blocks, device=device)
 xbar = torch.zeros(n_blocks, input_dim, device=device)
 for i, region in enumerate(unique_regions):
@@ -146,16 +147,16 @@ for _ in tqdm(range(niter_GPAreal), desc="Train GPArealModel"):
     loss = gpa(s_jumbled_within_regions, region_assignments, xbar, ybar)
     loss.backward()
     opt.step()
-    with torch.no_grad():
-        gpa.sigmasq.clamp_(min=1e-6)
-        gpa.phi.clamp_(min=1e-6)
-        gpa.tausq.clamp_(min=1e-6)
+    # with torch.no_grad():
+    #     gpa.sigmasq.clamp_(min=1e-6)
+    #     gpa.phi.clamp_(min=1e-6)
+    #     gpa.tausq.clamp_(min=1e-6)
 
 result['GPArealModel'] = {
     'nu': float(gpa.nu.item()),
-    'phi': float(gpa.phi.item()),
-    'sigmasq': float(gpa.sigmasq.item()),
-    'tausq': float(gpa.tausq.item()),
+    'phi': float(np.exp(gpa.logphi.item())),
+    'sigmasq': float(np.exp(gpa.logsigmasq.item())),
+    'tausq': float(np.exp(gpa.logtausq.item())),
     'beta': gpa.beta.detach().float().cpu().numpy()
 }
 
