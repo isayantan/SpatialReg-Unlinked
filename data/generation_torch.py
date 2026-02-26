@@ -83,12 +83,10 @@ def generate_data(s, x, sigmasq, phi, beta_true, tausq_true, seed=42, spatial=Tr
     if spatial:
         K = sigmasq * exponential_kernel(s, s, phi)
         K = (K + (K.T))/2
-        K = near_pd_eig(K, eps=1e-6) 
+        K = K + tausq_true * torch.eye(N)
         w = torch.tensor(torch.distributions.MultivariateNormal(torch.zeros(N), K).sample())
     else:
-        w = torch.zeros(N)
+        w = torch.normal(0, torch.sqrt(torch.tensor(tausq_true)), size=(N,))
+    y = beta_true * x.flatten() + w 
 
-    e = torch.normal(0, torch.sqrt(torch.tensor(tausq_true)), size=(N,))
-    y = beta_true * x.flatten() + w + e
-
-    return y, w, e
+    return y, w

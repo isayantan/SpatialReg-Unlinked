@@ -66,7 +66,7 @@ data = torch.load(data_path, map_location=device)
 y  = data['y'].to(device).float()
 x  = data['x'].to(device).float()
 w  = data['w'].to(device).float()
-e  = data['e'].to(device).float()
+#e  = data['e'].to(device).float()
 s  = data['s'].to(device).float()
 region_assignments = data['region_assignments'].to(device).long()
 
@@ -118,6 +118,11 @@ for _ in tqdm(range(niter_GP), desc="Train GPModel (oracle)"):
     #     gp.sigmasq.clamp_(min=1e-6)
     #     gp.phi.clamp_(min=1e-6)
     #     gp.tausq.clamp_(min=1e-6)
+
+result['true_perms'] = {
+    'perm_x_true': perm_matrix_x,
+    'perm_s_true': perm_matrix_s
+}
 
 result['GPmodel'] = {
     'nu': float(gp.nu.item()),

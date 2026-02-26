@@ -66,7 +66,7 @@ data = torch.load(data_path, map_location=device)
 y  = data['y'].to(device).float()
 x  = data['x'].to(device).float()
 w  = data['w'].to(device).float()
-e  = data['e'].to(device).float()
+#e  = data['e'].to(device).float()
 s  = data['s'].to(device).float()
 region_assignments = data['region_assignments'].to(device).long()
 
@@ -118,6 +118,11 @@ for _ in tqdm(range(niter_GP), desc="Train GPModel (oracle)"):
     #     gp.sigmasq.clamp_(min=1e-6)
     #     gp.phi.clamp_(min=1e-6)
     #     gp.tausq.clamp_(min=1e-6)
+
+result['true_perms'] = {
+    'perm_x_true': perm_matrix_x,
+    'perm_s_true': perm_matrix_s
+}
 
 result['GPmodel'] = {
     'nu': float(gp.nu.item()),
@@ -183,8 +188,8 @@ prior_parameters = {
     "phi_prior_ub": 10.0
 }
 
-for tau in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
-    results_VI = VIGP_Unlinked(
+tau=0.9
+results_VI = VIGP_Unlinked(
         n_iter=niter_VI,
         n_blocks=n_blocks,
         n_locations=n_locations,
@@ -216,7 +221,7 @@ for tau in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
         prior_parameters=prior_parameters,
         anneal_every=20, use_global_tau_anneal= True, elbo_W= 5
     )
-    result[f'VIGP_unlinked_tau_{tau}'] = results_VI
+result[f'VIGP_unlinked_tau_{tau}'] = results_VI
 
 # --------- Save results ---------
 results_dir = os.path.join('..', 'data', 'results', 'vary_B2_annealed',

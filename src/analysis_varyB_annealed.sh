@@ -3,7 +3,7 @@
 #SBATCH --partition=long
 #SBATCH --output=out_annealed/analysis_%A_%a.out
 #SBATCH --error=log_annealed/analysis_%A_%a.err
-#SBATCH --array=0-1000%200     # <= MaxArraySize (1001 tasks). %200 is optional.
+#SBATCH --array=0-1000     # <= MaxArraySize (1001 tasks). %200 is optional.
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
