@@ -3,7 +3,7 @@
 #SBATCH --partition=long
 #SBATCH --output=out_annealed/analysis_%A_%a.out
 #SBATCH --error=log_annealed/analysis_%A_%a.err
-#SBATCH --array=0-1000     # <= MaxArraySize (1001 tasks). %200 is optional.
+#SBATCH --array=0-799     # <= MaxArraySize (1001 tasks). %200 is optional.
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=4G
@@ -17,16 +17,15 @@ which python
 mkdir -p out_annealed log_annealed
 
 # ---- Static params ----
-B_vals=(49 81 100 121 144)
-n_i_vals=(6 8 10 12 20)
+B_vals=(49 81 100 121)
+n_i_vals=(6 12)
 phi=2.0
 total_seed=100
 
 total_n_i=${#n_i_vals[@]}
 
 # Allow chunking
-ARRAY_OFFSET=${ARRAY_OFFSET:-0}
-idx=$((SLURM_ARRAY_TASK_ID + ARRAY_OFFSET))
+idx=$((SLURM_ARRAY_TASK_ID))
 
 # Safety: avoid running past total jobs
 TOTAL_JOBS=$(( ${#B_vals[@]} * ${#n_i_vals[@]} * total_seed ))
