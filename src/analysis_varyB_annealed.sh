@@ -18,7 +18,7 @@ mkdir -p out_annealed log_annealed
 
 # ---- Static params ----
 B_vals=(49 81 100 121)
-n_i_vals=(6 12)
+n_i_vals=(6 8)
 phi=2.0
 total_seed=100
 

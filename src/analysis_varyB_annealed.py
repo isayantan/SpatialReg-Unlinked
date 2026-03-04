@@ -101,23 +101,39 @@ if n_locations != (N // n_blocks):
 niter_GP = 3000
 niter_GPAreal = 3000
 niter_VI = 100
+W = 100            # window length (try 200–500)
+tol = 1e-4       # relative plateau tolerance (try 1e-5 if loss is noisy)
+max_iter = 20000
 
 result = {}
 torch.manual_seed(521)
 
-# ===================== 1) Oracle GP (locations & links known) =====================
+# ===================== 1) Oracle GP (locations & links known) =====================   # safety cap
+
 gp = GPModel().to(device)
 opt = optim.AdamW(gp.parameters(), lr=0.01, weight_decay=0.01)
 
-for _ in tqdm(range(niter_GP), desc="Train GPModel (oracle)"):
-    opt.zero_grad()
+gp_loss_history = []
+
+for it in tqdm(range(max_iter), desc="Train GPModel (oracle)"):
+    opt.zero_grad(set_to_none=True)
     loss = gp(s, x, y)
     loss.backward()
     opt.step()
-    # with torch.no_grad():
-    #     gp.sigmasq.clamp_(min=1e-6)
-    #     gp.phi.clamp_(min=1e-6)
-    #     gp.tausq.clamp_(min=1e-6)
+
+    cur = float(loss.detach().item())
+    gp_loss_history.append(cur)
+
+    if it > W:
+        recent = gp_loss_history[-W:]
+        rel_range = (max(recent) - min(recent)) / (abs(recent[-1]) + 1e-12)
+        if rel_range < tol:
+            print(f"[Stop GP] plateau over last {W} iters at it={it}, loss={cur:.6f}")
+            break
+
+# (optional) save loss trace for debugging
+result["GPmodel_loss_history"] = gp_loss_history
+
 
 result['true_perms'] = {
     'perm_x_true': perm_matrix_x,
@@ -147,15 +163,27 @@ for i, region in enumerate(unique_regions):
 
 gpa = GPArealModel().to(device)
 opt = optim.AdamW(gpa.parameters(), lr=0.01, weight_decay=0.01)
-for _ in tqdm(range(niter_GPAreal), desc="Train GPArealModel"):
-    opt.zero_grad()
+
+gpa_loss_history = []
+
+for it in tqdm(range(max_iter), desc="Train GPArealModel"):
+    opt.zero_grad(set_to_none=True)
     loss = gpa(s_jumbled_within_regions, region_assignments, xbar, ybar)
     loss.backward()
     opt.step()
-    # with torch.no_grad():
-    #     gpa.sigmasq.clamp_(min=1e-6)
-    #     gpa.phi.clamp_(min=1e-6)
-    #     gpa.tausq.clamp_(min=1e-6)
+
+    cur = float(loss.detach().item())
+    gpa_loss_history.append(cur)
+
+    if it > W:
+        recent = gpa_loss_history[-W:]
+        rel_range = (max(recent) - min(recent)) / (abs(recent[-1]) + 1e-12)
+        if rel_range < tol:
+            print(f"[Stop GPA] plateau over last {W} iters at it={it}, loss={cur:.6f}")
+            break
+
+result['GPAreal_loss_history'] = gpa_loss_history
+
 
 result['GPArealModel'] = {
     'nu': float(gpa.nu.item()),
@@ -175,7 +203,7 @@ Dist = torch.cdist(locations, locations, p=2)
 Dist = (Dist + Dist.T) / 2
 
 n_steps = 50
-n_phi_samples = 120
+n_phi_samples = 150
 n_piX_sample = 50
 n_piS_sample = 50
 
@@ -219,7 +247,7 @@ results_VI = VIGP_Unlinked(
         VX_ub=0.5, VS_ub=0.5,
         lr_piS=0.01, lr_piX=0.01,
         prior_parameters=prior_parameters,
-        anneal_every=20, use_global_tau_anneal= True, elbo_W= 5
+        anneal_every=20, use_global_tau_anneal= True, elbo_W= 5, tol=0.1
     )
 result[f'VIGP_unlinked_tau_{tau}'] = results_VI
 
