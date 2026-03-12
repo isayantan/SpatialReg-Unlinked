@@ -47,6 +47,7 @@ def VIGP_Unlinked(n_iter,
             elbo_W=10,
             init_state=None,        # dict of warm-start values
             warm_start=False,
+            return_mu_W_Sigma=False
             ):
     
     # Prior hyperparameters
@@ -468,7 +469,7 @@ def VIGP_Unlinked(n_iter,
             "loss_vector": loss_vector
         }
         # 
-        if warm_start: 
+        if warm_start or return_mu_W_Sigma: 
             parameters.update({
                 "mu_W": mu_W,
                 "Sigma_W": Sigma_W
