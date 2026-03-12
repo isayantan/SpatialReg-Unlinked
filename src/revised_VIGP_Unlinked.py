@@ -415,30 +415,84 @@ def VIGP_Unlinked(n_iter,
 
         total_loss = total_ll + total_entropy
                                                 
-        print(f"Total ELBO: {total_loss.item():.4f}")
-        # Store the loss in a vector
-        if iter == 0:
-            loss_vector = torch.zeros(n_iter)
-        loss_vector[iter] = total_loss.item()
-        #print relative change in loss in percentage
-        if iter > 0:
-            rel_change = (loss_vector[iter] - loss_vector[iter-1]) / (abs(loss_vector[iter-1]) + 1e-8) * 100
-            print(f"Relative change in total ELBO: {rel_change:.4e}%")
+        print(f"Total ELBO: {total_loss.item():.6f}")
 
-        W = elbo_W                # window size (iterations)
-        tol_pct = tol          # reuse your tol, interpreted as percent (e.g., 0.2 means 0.2%)
-        min_iter = W+1       # don't even check until we have enough history
+    # initialize once
+        if iter == 0:
+            loss_vector = torch.empty(n_iter, device=total_loss.device)
+            best_smoothed_elbo = None
+            no_improve_count = 0
+
+        loss_vector[iter] = total_loss.detach()
+
+    # raw relative change
+        if iter > 0:
+            rel_change = (
+                (loss_vector[iter] - loss_vector[iter - 1])
+                / (torch.abs(loss_vector[iter - 1]) + 1e-8)
+                * 100.0
+                )
+            print(f"Relative change in total ELBO: {rel_change.item():.4e}%")
+
+    # ---- robust stopping rule ----
+        W = elbo_W                 # smoothing window, e.g. 10
+        tol_pct = tol              # e.g. 0.05 means 0.05%
+        patience = 5               # number of plateau checks before stopping
+        min_iter = 2 * W           # wait until enough history exists
 
         if iter >= min_iter:
             curr_avg = loss_vector[iter-W:iter].mean()
-            prev_avg = loss_vector[iter-W-1:iter-1].mean()
-            rel_impr = (curr_avg - prev_avg) / (torch.abs(prev_avg) + 1e-8) * 100.0
+            
+            if best_smoothed_elbo is None:
+                rel_impr_best = torch.tensor(float("inf"), device=curr_avg.device)
+            else:
+                rel_impr_best = (
+                (curr_avg - best_smoothed_elbo)
+                / (torch.abs(best_smoothed_elbo) + 1e-8)
+                * 100.0
+                )
 
-            print(f"Smoothed ELBO rel_impr over last {W}: {rel_impr.item():.4e}%")
+            print(f"Current smoothed ELBO over last {W}: {curr_avg.item():.6f}")
+            if best_smoothed_elbo is not None:
+                print(f"Relative improvement vs best smoothed ELBO: {rel_impr_best.item():.4e}%")
 
-            if rel_impr.item() >= 0 and rel_impr.item() < tol_pct:
-                print(f"Stopping: smoothed ELBO improvement is {rel_impr.item():.4e}% (< {tol_pct}%)")
+            if (best_smoothed_elbo is None) or (rel_impr_best.item() > tol_pct):
+                best_smoothed_elbo = curr_avg.detach().clone()
+                no_improve_count = 0
+            else:
+                no_improve_count += 1
+                print(f"No meaningful ELBO improvement. Patience {no_improve_count}/{patience}")
+
+            if no_improve_count >= patience:
+                print(
+                f"Stopping: smoothed ELBO has not improved by at least "
+                f"{tol_pct}% for {patience} consecutive checks."
+                )
                 break
+        # print(f"Total ELBO: {total_loss.item():.4f}")
+        # # Store the loss in a vector
+        # if iter == 0:
+        #     loss_vector = torch.zeros(n_iter)
+        # loss_vector[iter] = total_loss.item()
+        # #print relative change in loss in percentage
+        # if iter > 0:
+        #     rel_change = (loss_vector[iter] - loss_vector[iter-1]) / (abs(loss_vector[iter-1]) + 1e-8) * 100
+        #     print(f"Relative change in total ELBO: {rel_change:.4e}%")
+
+        # W = elbo_W                # window size (iterations)
+        # tol_pct = tol          # reuse your tol, interpreted as percent (e.g., 0.2 means 0.2%)
+        # min_iter = W+1       # don't even check until we have enough history
+
+        # if iter >= min_iter:
+        #     curr_avg = loss_vector[iter-W:iter].mean()
+        #     prev_avg = loss_vector[iter-W-1:iter-1].mean()
+        #     rel_impr = (curr_avg - prev_avg) / (torch.abs(prev_avg) + 1e-8) * 100.0
+
+        #     print(f"Smoothed ELBO rel_impr over last {W}: {rel_impr.item():.4e}%")
+
+        #     if rel_impr.item() >= 0 and rel_impr.item() < tol_pct:
+        #         print(f"Stopping: smoothed ELBO improvement is {rel_impr.item():.4e}% (< {tol_pct}%)")
+        #         break
         
 
 
