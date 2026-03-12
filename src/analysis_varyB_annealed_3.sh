@@ -3,10 +3,11 @@
 #SBATCH --partition=long
 #SBATCH --output=out_annealed/analysis_%A_%a.out
 #SBATCH --error=log_annealed/analysis_%A_%a.err
-#SBATCH --array=0-199     # <= MaxArraySize (1001 tasks). %200 is optional.
+#SBATCH --array=0-399     # <= MaxArraySize (1001 tasks). %200 is optional.
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20G
+#SBATCH --time=3-00:00:00
 
 set -euo pipefail
 
@@ -17,7 +18,7 @@ which python
 mkdir -p out_annealed log_annealed
 
 # ---- Static params ----
-B_vals=(100 121)
+B_vals=(49 80 100 121)
 n_i_vals=(20)
 phi=2.0
 total_seed=100
