@@ -1,0 +1,11 @@
+nu=0.5 phi=0.25 t2=0.5: tau_c2=5.32 mu2=14.5 delta_cov=0.270 maxD/B=1.97 Icl/Iagg(b=.5,1,2)=8.16,14.86,18.91 Icl/Ior(b=1)=0.56
+nu=0.5 phi=0.5 t2=0.5: tau_c2=3.39 mu2=14.5 delta_cov=0.216 maxD/B=1.53 Icl/Iagg(b=.5,1,2)=7.88,13.28,16.10 Icl/Ior(b=1)=0.61
+nu=0.5 phi=1.0 t2=0.5: tau_c2=2.15 mu2=11.5 delta_cov=0.140 maxD/B=0.99 Icl/Iagg(b=.5,1,2)=6.88,11.01,12.82 Icl/Ior(b=1)=0.65
+nu=1.5 phi=0.25 t2=0.5: tau_c2=3.03 mu2=35.1 delta_cov=0.473 maxD/B=3.33 Icl/Iagg(b=.5,1,2)=9.63,15.25,17.48 Icl/Ior(b=1)=0.58
+nu=1.5 phi=0.5 t2=0.5: tau_c2=1.43 mu2=24.4 delta_cov=0.188 maxD/B=1.44 Icl/Iagg(b=.5,1,2)=5.45,8.31,9.38 Icl/Ior(b=1)=0.66
+nu=1.5 phi=1.0 t2=0.5: tau_c2=0.87 mu2=13.6 delta_cov=0.057 maxD/B=0.46 Icl/Iagg(b=.5,1,2)=3.95,6.17,6.90 Icl/Ior(b=1)=0.70
+nu=2.5 phi=0.25 t2=0.5: tau_c2=2.30 mu2=42.1 delta_cov=0.468 maxD/B=3.40 Icl/Iagg(b=.5,1,2)=7.55,11.27,13.02 Icl/Ior(b=1)=0.59
+nu=2.5 phi=0.5 t2=0.5: tau_c2=1.11 mu2=24.6 delta_cov=0.149 maxD/B=1.18 Icl/Iagg(b=.5,1,2)=4.19,6.43,7.28 Icl/Ior(b=1)=0.67
+nu=2.5 phi=1.0 t2=0.5: tau_c2=0.72 mu2=12.9 delta_cov=0.041 maxD/B=0.33 Icl/Iagg(b=.5,1,2)=3.53,5.37,5.88 Icl/Ior(b=1)=0.71
+nu=0.5 phi=0.5 t2=0.1: tau_c2=2.81 mu2=28.6 delta_cov=0.491 maxD/B=3.68 Icl/Iagg=17.17,22.73,25.57 Icl/Ior(b=1)=0.62
+nu=0.5 phi=0.5 t2=2.0: tau_c2=5.31 mu2=6.3 delta_cov=0.064 maxD/B=0.45 Icl/Iagg=2.58,5.97,9.15 Icl/Ior(b=1)=0.47

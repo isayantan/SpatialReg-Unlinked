@@ -188,3 +188,33 @@ data/data_analysis/meuse_obs/meuse_obs.shx
 
 # macOS
 .DS_Store
+
+# ---------------------------------------------------------------
+# Manuscript (root *.tex = working revision, compiled by Overleaf)
+# ---------------------------------------------------------------
+# private material: referee reports, decision/cover letters, letterhead — never pushed
+paper/private/
+
+# LaTeX build artifacts (Overleaf never pushes these; keep local builds out too)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.spl
+/*.out
+/*.log
+/doubly_unlinked.pdf
+/doubly_unlinked_supplement.pdf
+paper/theory/*.log
+paper/theory/*.out
+
+# simulation logs under paper/theory/sims are results, not build noise (override the global *.log above)
+!paper/theory/sims/*.log

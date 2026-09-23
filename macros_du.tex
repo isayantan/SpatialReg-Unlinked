@@ -1,0 +1,163 @@
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\noi}{\noindent}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\nlim}{\xrightarrow[]{n \to \infty}}
+\newcommand{\pnlim}{\xrightarrow[n \to \infty]{P}}
+\newcommand{\klim}{\xrightarrow[]{k \to \infty}}
+\newcommand{\aslim}{\xrightarrow[n \to \infty]{a.s.}}
+\newcommand{\dnlim}{\xrightarrow[n \to \infty]{d}}
+\newcommand{\lnlim}{\xrightarrow[n \to \infty]{L_2}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\tr}{\mathrm{tr}}
+\newcommand{\calB}{\mathcal{B}}
+\newcommand{\calC}{\mathcal{C}}
+\newcommand{\calD}{\mathcal{D}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\calP}{\mathcal{P}}
+\newcommand{\calH}{\mathcal{H}}
+\newcommand{\calHP}{\mathcal{P}}
+\newcommand{\calI}{\mathcal{I}}
+\newcommand{\calQ}{\mathcal{Q}}
+\newcommand{\calN}{\mathcal{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\bigo}{\mathcal{O}}
+\newcommand{\smallo}{o}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\bdn}{\bar{d}_n}
+\newcommand{\bE}{\mathbf{E}}
+\newcommand{\bW}{\boldsymbol{W}}
+\newcommand{\bX}{\boldsymbol{X}}
+\newcommand{\bR}{\mathbf{R}}
+\newcommand{\bpix}{\boldsymbol{\pi}_X}
+\newcommand{\bpis}{\boldsymbol{\pi}_S}
+\newcommand{\bPix}{\boldsymbol{\Pi}_X}
+\newcommand{\bPis}{\boldsymbol{\Pi}_S}
+\newcommand{\bPi}{\boldsymbol{\Pi}}
+\newcommand{\bpi}{\boldsymbol{\pi}}
+\newcommand{\hatpi}{\widehat{\boldsymbol{\pi}}}
+\newcommand{\hatPi}{\widehat{\boldsymbol{\Pi}}}
+\newcommand{\hatPix}{\widehat{\boldsymbol{\Pi}}_x}
+\newcommand{\hatPis}{\widehat{\boldsymbol{\Pi}}_s}
+\newcommand{\bPisx}{\boldsymbol{\Pi}_s\boldsymbol{\Pi}_x}
+\newcommand{\delnu}{\Delta\nu}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bM}{\mathbf{M}}
+\newcommand{\bB}{\mathbf{B}}
+\newcommand{\bK}{\mathbf{K}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzet}{\boldsymbol{\zeta}}
+\newcommand{\bGam}{\boldsymbol{\Gamma}}
+\newcommand{\bQ}{\boldsymbol{Q}}
+\newcommand{\bh}{\boldsymbol{h}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bT}{\mathbf{T}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bV}{\mathbf{V}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\balp}{\boldsymbol{\alpha}}
+\newcommand{\snr}{\mathrm{SNR}}
+\newcommand{\bdiag}{\mathrm{bdiag}}
+\newcommand{\bDel}{\boldsymbol{\Delta}}
+\newcommand{\bA}{\mathbf{A}}
+\newcommand{\boldW}{\mathbb{W}}
+\newcommand{\boldY}{\mathbb{Y}}
+\newcommand{\boldX}{\mathbb{X}}
+\newcommand{\boldM}{\mathbb{M}}
+\newcommand{\boldV}{\mathbb{V}}
+\newcommand{\bZ}{\boldsymbol{Z}}
+\newcommand{\bU}{\boldsymbol{U}}
+\newcommand{\bL}{\boldsymbol{L}}
+\newcommand{\bP}{\mathbf{P}}
+\newcommand{\bLam}{\boldsymbol{\Lambda}}
+\newcommand{\blam}{\boldsymbol{\lambda}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\bI}{\mathbf{I}}
+\newcommand{\beps}{\boldsymbol{\epsilon}}
+\newcommand{\bet}{\boldsymbol{\eta}}
+\newcommand{\bSig}{\boldsymbol{\Sigma}}
+\newcommand{\Siginv}{\boldsymbol{\Sigma}^{-1}}
+\newcommand{\ra}{\rightarrow}
+\newcommand{\la}{\leftarrow}
+\newcommand{\fld}{\mathcal{F}}
+\newcommand{\Cov}{\text{Cov}\,}
+\newcommand{\bard}{\bdn}
+\newcommand{\pr}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\colsp}{\mathscr{C}}
+% \newtheorem{theorem}{Theorem}
+% \newtheorem{corollary}{Corollary}
+% \newtheorem{lemma}{Lemma}
+% \newtheorem{proposition}{Proposition}
+% \newtheorem{posterior}{Posterior}
+% \newtheorem{assumption}{Assumption}
+% \theoremstyle{definition}
+% \newtheorem{definition}{Definition}
+% \newtheorem{remark}{Remark}
+% \newtheorem{example}{Example}
+% \newtheorem{conjecture}{Conjecture}
+\newcommand{\Tau}{\mathcal{T}}
+\newcommand{\bSigma}{{\boldsymbol{\Sigma}}}
+\newcommand{\transpose}{^\top}
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\rough}{\underset{\sim}{<}}
+\newcommand{\bH}{\boldsymbol{H}}
+\newcommand{\bep}{\boldsymbol{\epsilon}}
+\newcommand{\hbn}{\hat{\beta}_n}
+\newcommand{\ets}{\eta^{*}}
+% \newcommand{\BM}{\mathbf{M}}
+\newcommand{\bTh}{\boldsymbol{\Theta}}
+\newcommand{\bth}{\boldsymbol{\theta}}
+\newcommand{\bets}{\boldsymbol{\eta}^{*}}
+\newcommand{\betap}{\beta^{'}}
+\newcommand{\ystbp}{Y^{*}_{\betap}}
+\newcommand{\bystbp}{\boldsymbol{Y}^{*}_{\betap}}
+\newcommand{\bystb}{\boldsymbol{Y}^{*}_{\beta}}
+\newcommand{\Xstar}{X^{*}}
+\newcommand{\bXstar}{\boldsymbol{X}^{*}}
+\newcommand{\bs}{\boldsymbol{s}}
+\newcommand{\tilX}{\widetilde{\boldsymbol{X}}}
+\newcommand{\tilY}{\widetilde{\boldsymbol{Y}}}
+\newcommand{\tbH}{\boldsymbol{H}^{'}}
+\newcommand{\tbh}{\boldsymbol{h}^{'}}
+\newcommand{\bdel}{\boldsymbol{\delta}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bgam}{\boldsymbol{\gamma}}
+\newcommand{\bzero}{\boldsymbol{0}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\Pst}{\mathbb{P}^{*}}
+\newcommand{\betahat}{\hat{\beta}}
+
+\newcommand{\hly}[1]{\colorbox{yellow}{#1}}
+\newcommand{\iid}{\stackrel{\mathclap{\normalfont\tiny\mbox{iid}}}{\sim}}
+\newcommand{\given}{\,|\,}
+\newcommand{\biggiven}{\,\middle|\,}
+\newcommand{\V}{\mathbb{V}}
+\newcommand{\defeq}{\vcentcolon=}
+\newcommand{\DY}{\mathrm{DY}}
+\newcommand{\CM}{\mathrm{CM}}
+\newcommand{\GCM}{\mathrm{GCM}}
+\newcommand{\CMc}{\mathrm{CM_c}}
+\newcommand{\GCMc}{\mathrm{GCM_c}}
+\newcommand{\Cor}{\mathrm{Cor}}
+
+
+
+
+
+% \newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{lemma}{Lemma}
+% \newtheorem{proposition}{Proposition}
+% \newtheorem{posterior}{Posterior}
+% \newtheorem{assumption}{Assumption}
+% \newtheorem{definition}{Definition}
+% \newtheorem{remark}{Remark}
+% \newtheorem{example}{Example}
+% \newtheorem{conjecture}{Conjecture}

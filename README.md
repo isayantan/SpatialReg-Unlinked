@@ -37,6 +37,12 @@ A self-contained walkthrough is provided in [`vignette.ipynb`](vignette.ipynb). 
 
 ---
 
+## Manuscript
+
+The LaTeX source of the paper lives in this repository so that it can be edited on Overleaf and on GitHub alike: `doubly_unlinked.tex` / `doubly_unlinked_supplement.tex` at the root are the working revision, and [`paper/`](paper/README.md) holds the submitted version, the theory document, and working notes. See `paper/README.md` for the layout and the Overleaf sync workflow.
+
+---
+
 ## Repository Structure
 
 ```
