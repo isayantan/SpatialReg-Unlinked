@@ -185,3 +185,6 @@ data/data_analysis/meuse_obs/meuse_obs.dbf
 data/data_analysis/meuse_obs/meuse_obs.prj
 data/data_analysis/meuse_obs/meuse_obs.shp
 data/data_analysis/meuse_obs/meuse_obs.shx
+
+# macOS
+.DS_Store

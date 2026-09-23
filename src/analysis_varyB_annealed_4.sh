@@ -1,12 +1,13 @@
 #!/bin/bash
-#SBATCH --job-name=run_analysis_varyB2_remaining
+#SBATCH --job-name=run_analysis_varyB2
 #SBATCH --partition=long
 #SBATCH --output=out_annealed/analysis_%A_%a.out
 #SBATCH --error=log_annealed/analysis_%A_%a.err
-#SBATCH --array=0-199
+#SBATCH --array=0-99    # <= MaxArraySize (1001 tasks). %200 is optional.
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=20G
+#SBATCH --time=3-00:00:00
 
 set -euo pipefail
 
@@ -16,28 +17,31 @@ which python
 
 mkdir -p out_annealed log_annealed
 
-# ---- Remaining settings only ----
-B_vals=(81 121)
-n_i_vals=(20 12)
+# ---- Static params ----
+B_vals=(121)
+n_i_vals=(20)
 phi=2.0
 total_seed=100
-total_settings=${#B_vals[@]}
 
-idx=$SLURM_ARRAY_TASK_ID
+total_n_i=${#n_i_vals[@]}
 
-# Safety
-TOTAL_JOBS=$(( total_settings * total_seed ))
+# Allow chunking
+idx=$((SLURM_ARRAY_TASK_ID))
+
+# Safety: avoid running past total jobs
+TOTAL_JOBS=$(( ${#B_vals[@]} * ${#n_i_vals[@]} * total_seed ))
 if (( idx >= TOTAL_JOBS )); then
   echo "idx=${idx} >= TOTAL_JOBS=${TOTAL_JOBS}. Exiting."
   exit 0
 fi
 
-# Map array index -> (setting, seed)
-setting_idx=$(( idx / total_seed ))
+# Compute indices
+b_idx=$(( idx / (total_n_i * total_seed) ))
+n_i_idx=$(( (idx / total_seed) % total_n_i ))
 seed_idx=$(( idx % total_seed ))
 
-B=${B_vals[$setting_idx]}
-n_i=${n_i_vals[$setting_idx]}
+B=${B_vals[$b_idx]}
+n_i=${n_i_vals[$n_i_idx]}
 seed=$((seed_idx + 1))
 
 echo "Running idx=${idx} with B=${B}, n_i=${n_i}, seed=${seed}, phi=${phi}"
