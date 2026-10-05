@@ -1,0 +1,7 @@
+beta=0.00 B= 200: joint-max mean -0.077 sd 0.492 mean|.| 0.497 | marginal mean -0.009 sd 0.054
+beta=0.25 B= 200: joint-max mean  0.566 sd 0.017 mean|.| 0.566 | marginal mean  0.244 sd 0.036
+beta=0.50 B= 200: joint-max mean  0.705 sd 0.017 mean|.| 0.705 | marginal mean  0.498 sd 0.025
+beta=1.00 B= 200: joint-max mean  1.097 sd 0.017 mean|.| 1.097 | marginal mean  0.998 sd 0.020
+beta=0.50 B=  50: joint-max mean  0.703 sd 0.035 mean|.| 0.703 | marginal mean  0.493 sd 0.055
+beta=0.50 B= 200: joint-max mean  0.708 sd 0.019 mean|.| 0.708 | marginal mean  0.503 sd 0.022
+beta=0.50 B= 800: joint-max mean  0.705 sd 0.009 mean|.| 0.705 | marginal mean  0.502 sd 0.014

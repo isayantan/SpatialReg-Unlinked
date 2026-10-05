@@ -1,6 +1,7 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,bm}
+\usepackage{mathrsfs}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \graphicspath{{./}{paper/theory/}}  % compiles from this folder or from the repo/Overleaf root
@@ -38,6 +39,7 @@
 \newcommand{\bpi}{\boldsymbol{\pi}}
 \newcommand{\bPi}{\boldsymbol{\Pi}}
 \newcommand{\bsigma}{\boldsymbol{\sigma}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\Prob}{\mathbb{P}}
 \newcommand{\Var}{\operatorname{Var}}
@@ -51,14 +53,14 @@
 \newcommand{\orc}{\mathrm{or}}
 
 \title{Doubly-unlinked regression with block-specific keys:\\ separation, disclosure risk, and the efficiency of the marginal likelihood}
-\author{Working draft --- theory for the resubmission}
+\author{Working draft --- theory for the JRSS-B resubmission}
 \date{20 September 2026}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-We study regression when, within each of $B$ known blocks, the pairing of responses with covariates and the pairing of responses with domain locations are scrambled by unknown permutations (\emph{keys}) that may differ across blocks. The paper makes two claims and this note proves both. \textbf{Separation} (Theorem~\ref{thm:sep}): when the keys are drawn at random, as a data steward would, the regression coefficient is estimable at the parametric rate by any analyst, whereas no adversary re-links a block with probability exceeding an explicit constant, so the correspondences are not recoverable; the two facts hold simultaneously at every signal level, and together they make within-block scrambling a release mechanism with a quantifiable risk--utility trade-off. \textbf{Efficiency} (Theorem~\ref{thm:eff}): the Fisher information about the coefficient in the released data lies strictly between that of the block means, which the areal GLS uses, and that of the oracle, and equals the oracle information minus the information carried by the keys; the marginal-likelihood estimator, of which the proposed variational algorithm is a computational proxy, is therefore asymptotically more efficient than areal GLS by exactly the factor $I_\rel/I_\agg$. For the full marginal likelihood the same conclusion is proved conditionally on a central limit theorem for its score and a local law of large numbers for its observed information (Theorem~\ref{thm:onestep}), the two conditions the composite likelihood satisfies; the one-step estimator from the areal GLS then attains the marginal-likelihood efficiency, which is what anchoring the algorithm at the areal estimator buys. The common-key model of the submitted paper is the one case in which pooling across blocks defeats the risk half; its recovery theorem is restated (Theorem~\ref{thm:common}) with a conditional signal-to-noise ratio that stays bounded under fixed-domain sampling and without the polynomial-in-block-size signal condition, which turns out to be an artefact of the earlier proof. All statements are for $d$ covariates: the per-record risk and the oracle-to-areal information ratio depend on $\beta$ and the covariate covariance only through the variance of the linear predictor, so the number of covariates enters only through degrees of freedom and constants. Section~\ref{sec:spatialX} goes through the results for a spatially correlated covariate field independent of $W$: the separation and the efficiency ordering are untouched, a smooth covariate costs information (unlinking is then almost free for the analyst) and raises the re-linking floors, and a smooth attribute is a second re-linking channel when the location is known; the dependent case is left open. Proofs are in the appendices.
+We study regression when, within each of $B$ known blocks, the pairing of responses with covariates and the pairing of responses with domain locations are scrambled by unknown permutations (\emph{keys}) that may differ across blocks. The paper makes two claims and this note proves both. \textbf{Separation} (Theorem~\ref{thm:sep}): when the keys are drawn at random, as a data steward would, the regression coefficient is estimable at the parametric rate by any analyst, whereas no adversary re-links a block with probability exceeding an explicit constant, so the correspondences are not recoverable; the two facts hold simultaneously at every signal level, and together they make within-block scrambling a release mechanism with a quantifiable risk--utility trade-off. \textbf{Efficiency} (Theorem~\ref{thm:eff}): the Fisher information about the coefficient in the released data lies strictly between that of the block means, which the areal GLS uses, and that of the oracle, and equals the oracle information minus the information carried by the keys; the marginal-likelihood estimator, of which the proposed variational algorithm is a computational proxy, is therefore asymptotically more efficient than areal GLS by exactly the factor $I_\rel/I_\agg$. Section~\ref{sec:targets} makes the word ``proxy'' precise: the algorithm's evidence lower bound equals the marginal log-likelihood minus a mean-field gap (Lemma~\ref{lem:elbo}), the joint maximisation over keys and coefficient analysed in the submitted paper is its point-mass special case, and that special case is consistent when all blocks share the keys but not when keys are block-specific, where its bias does not vanish with the number of blocks (Table~\ref{tab:profile}). For the full marginal likelihood the same conclusion is proved conditionally on a central limit theorem for its score and a local law of large numbers for its observed information (Theorem~\ref{thm:onestep}), the two conditions the composite likelihood satisfies; the one-step estimator from the areal GLS then attains the marginal-likelihood efficiency, which is what anchoring the algorithm at the areal estimator buys. The common-key model of the submitted paper is the one case in which pooling across blocks defeats the risk half; its recovery theorem is restated (Theorem~\ref{thm:common}) with a conditional signal-to-noise ratio that stays bounded under fixed-domain sampling and without the polynomial-in-block-size signal condition, which turns out to be an artefact of the earlier proof. All statements are for $d$ covariates: the per-record risk and the oracle-to-areal information ratio depend on $\beta$ and the covariate covariance only through the variance of the linear predictor, so the number of covariates enters only through degrees of freedom and constants. Section~\ref{sec:spatialX} goes through the results for a spatially correlated covariate field independent of $W$: the separation and the efficiency ordering are untouched, a smooth covariate costs information (unlinking is then almost free for the analyst) and raises the re-linking floors, and a smooth attribute is a second re-linking channel when the location is known; the dependent case is left open. Proofs are in the appendices.
 \end{abstract}
 
 \section{Model}\label{sec:model}
@@ -92,6 +94,48 @@ $\bpi_X^{(1)},\bpi_S^{(1)},\dots,\bpi_X^{(B)},\bpi_S^{(B)}$ are independent, eac
 \end{description}
 The \emph{common-key} model of the submitted paper, $K_b\equiv K$ and $\bpi_X^{(b)}\equiv\bpi_X$, $\bpi_S^{(b)}\equiv\bpi_S$, is a further special case treated in Section~\ref{sec:common}.
 
+\subsection{Three ways to treat the keys, and what REPAIR computes}\label{sec:targets}
+
+Before any result is stated it is worth being precise about which function of the data is being maximised, because the submitted paper, the algorithm and this note each look at a different one and the three are related by an identity. Hold the covariance parameters $(\bSig_W,\tau^2)$ fixed, as everywhere in this note, write $\bpi:=(\bpi_X^{(b)},\bpi_S^{(b)})_{b\le B}$ for the full set of keys, and let
+\begin{equation}\label{eq:condlik}
+L(\bpi,\beta):=\phi_n\big(\bY;\ \bPi_X\bX\beta,\ \bPi_S\bSig_W\bPi_S^\top+\tau^2\bI_n\big)
+\end{equation}
+be the Gaussian likelihood of the released data \emph{given} the keys, the field $\bW$ already integrated out. Three objects are built from it.
+\begin{description}
+\item[(A) Joint maximisation: keys as parameters.] $\max_{\bpi,\beta}L(\bpi,\beta)$. The maximising keys, with $\beta$ profiled out, are the least-squares keys \eqref{eq:ml} below, and the profile estimator is $\hat\beta_{\mathrm{prof}}:=\arg\max_\beta\max_{\bpi}L(\bpi,\beta)$. This is the object analysed in the recovery theorem of the submitted paper.
+\item[(B) Marginal likelihood: keys as latent variables.] Under Assumption~\ref{ass:keys} the keys are random with a known (uniform) law, and the exact likelihood of the released data is the mixture
+\begin{equation}\label{eq:marglik}
+L_\rel(\beta):=\E_{\bpi}\big[L(\bpi,\beta)\big]=\prod_b\big(K_b!\big)^{-2}\sum_{\bpi}L(\bpi,\beta),
+\end{equation}
+with maximiser $\hat\beta_\rel$. This is the object of Sections~\ref{sec:sep}--\ref{sec:eff} and~\ref{sec:full}, and of its block-wise composite version \eqref{eq:composite}.
+\item[(C) REPAIR: a variational lower bound.] The algorithm places priors on every unknown, $\btheta:=(\bW,\beta,\sigma^2,\phi,\tau^2,\bpi)$, and maximises the evidence lower bound $\mathscr L(q):=\E_q[\log p(\bY,\btheta\mid\bX)-\log q(\btheta)]$ over the mean-field family $q(\btheta)=q(\beta)\,q(\bz)$, $q(\bz)=q(\bW)q(\sigma^2)q(\phi)q(\tau^2)\prod_bq(\bpi_X^{(b)})q(\bpi_S^{(b)})$, where $\bz$ collects every unknown other than $\beta$; the key factors are the Gumbel--Sinkhorn relaxations of the paper. It reports the mean of $q(\beta)=N(\mu_\beta,s_\beta^2)$ as the estimate of $\beta$ and the Hungarian rounding of $\E_q[\bpi]$ as the estimate of the keys.
+\end{description}
+
+\begin{lemma}[What the ELBO is]\label{lem:elbo}
+Fix $(\sigma^2,\phi,\tau^2)$ at their true values (or condition on them), so that $\bz=(\bW,\bpi)$ and $p(\bY\mid\beta)=L_\rel(\beta)$ by Assumption~\ref{ass:keys}. Then for every $q(\beta)$ and every $q(\bz)$, with $p(\bz\mid\bY,\beta)$ the exact posterior of the field and the keys:
+\begin{enumerate}
+\item[(i)] (Exact decomposition.) $\displaystyle \mathscr L(q)=\E_{q(\beta)}\big[\log L_\rel(\beta)\big]-\E_{q(\beta)}\Big[\mathrm{KL}\big(q(\bz)\,\big\|\,p(\bz\mid\bY,\beta)\big)\Big]-\mathrm{KL}\big(q(\beta)\,\big\|\,p(\beta)\big).$
+\item[(ii)] (Ceiling.) For fixed $\beta$, $\sup_{q(\bz)}\big\{\E_{q(\bz)}[\log p(\bY,\bz\mid\beta)-\log q(\bz)]\big\}=\log L_\rel(\beta)$, attained at $q(\bz)=p(\bz\mid\bY,\beta)$. If the variational family contained the exact posterior, the maximiser over $\beta$ of the profiled bound would be $\hat\beta_\rel$.
+\item[(iii)] (Floor.) If $q(\bpi)$ is restricted to point masses $\delta_{\bpi'}$ and $q(\bW)$ is left free, the profiled bound equals $\max_{\bpi'}\log L(\bpi',\beta)-\sum_b\log(K_b!)^2$, and its maximiser over $\beta$ is the profile estimator $\hat\beta_{\mathrm{prof}}$ of (A).
+\item[(iv)] (The reported estimate; written for $d=1$.) With a Gaussian $q(\beta)$ and the prior $\beta\sim N(0,\sigma_\beta^2)$, the coordinate-ascent update of the paper gives $s_\beta^2=\big(\E_q[\tau^{-2}]\sum_b\|\bX_b\|^2+\sigma_\beta^{-2}\big)^{-1}=O(1/n)$, and $\mu_\beta$ maximises $\E_{q(\beta)}[\,\cdot\,]$ of the profiled bound; by (i) and a second-order expansion in a window of width $O(n^{-1/2})$,
+\begin{equation}\label{eq:vfe}
+\mu_\beta=\arg\max_\beta\Big\{\log L_\rel(\beta)-\min_{q(\bz)\in\mathcal Q_{\mathrm{MF}}}\mathrm{KL}\big(q(\bz)\,\big\|\,p(\bz\mid\bY,\beta)\big)\Big\}+o_p(n^{-1/2}),
+\end{equation}
+where $\mathcal Q_{\mathrm{MF}}$ is the mean-field family of (C).
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(i) Since $q(\btheta)=q(\beta)q(\bz)$ and $p(\bY,\btheta\mid\bX)=p(\bY,\bz\mid\beta)\,p(\beta)$, the ELBO is $\E_{q(\beta)}\big[\E_{q(\bz)}[\log p(\bY,\bz\mid\beta)-\log q(\bz)]\big]+\E_{q(\beta)}[\log p(\beta)-\log q(\beta)]$, and the last term is $-\mathrm{KL}(q(\beta)\|p(\beta))$. Inside the first term write $p(\bY,\bz\mid\beta)=p(\bY\mid\beta)\,p(\bz\mid\bY,\beta)$: $\E_{q(\bz)}[\log p(\bY,\bz\mid\beta)-\log q(\bz)]=\log p(\bY\mid\beta)+\E_{q(\bz)}[\log p(\bz\mid\bY,\beta)-\log q(\bz)]=\log L_\rel(\beta)-\mathrm{KL}(q(\bz)\|p(\bz\mid\bY,\beta))$. (ii) is the inner identity with $\mathrm{KL}\ge0$ and equality iff $q(\bz)=p(\bz\mid\bY,\beta)$. (iii) With $q(\bpi)=\delta_{\bpi'}$, $\E_{q}[\log p(\bY,\bz\mid\beta)-\log q(\bz)]=\E_{q(\bW)}[\log p(\bY,\bW\mid\bpi',\beta)-\log q(\bW)]+\log p(\bpi')$, and $\log p(\bpi')=-\sum_b\log(K_b!)^2$ is constant; the supremum over $q(\bW)$ of the first term is $\log L(\bpi',\beta)$ by (ii) applied with $\bpi'$ fixed (the $\bW$-posterior is Gaussian and lies in the family). (iv) The $q(\beta)$-update maximises $\E_{q(\beta)}[g(\beta)]-\mathrm{KL}(q(\beta)\|p(\beta))$ over Gaussians, $g(\beta):=\E_{q(\bz)}[\log p(\bY,\bz\mid\beta)-\log q(\bz)]$, which is quadratic in $\beta$ with curvature $-\E_q[\tau^{-2}]\sum_b\|\bX_b\|^2$ because $\bpi^\top\bpi=\bI$; this gives $s_\beta^2$ and $\mu_\beta=\arg\max_\beta\{g(\beta)+\log p(\beta)\}$. Iterating the coordinate ascent to a fixed point, $q(\bz)$ is the mean-field minimiser of the KL at $\beta$ in a neighbourhood of $\mu_\beta$, $\log p(\beta)=O(1)$ shifts the maximiser by $O(1/n)$, and the $\E_{q(\beta)}$-smoothing over a window of width $s_\beta=O(n^{-1/2})$ of a function with curvature of order $n$ shifts it by $o(n^{-1/2})$ (Wang and Blei 2019, JASA, Theorem~5, call the maximiser in \eqref{eq:vfe} the variational frequentist estimate and prove that the VB mean is asymptotically normal around it).
+\end{proof}
+
+\begin{remark}[Which object is analysed where, and why]\label{rem:targets}
+(a) \emph{Common keys (Section~\ref{sec:common}).} When all blocks share the same two keys the key space is $(K!)^2$ whatever $B$ is, and Theorem~\ref{thm:common} shows that the posterior over the keys concentrates on the truth exponentially fast in $B$. Then the exact posterior is itself essentially a point mass, the floor (iii) and the ceiling (ii) of Lemma~\ref{lem:elbo} coincide up to a vanishing term, and joint maximisation, marginal likelihood and REPAIR estimate the same thing; the submitted paper's choice of (A) as the analysed object is correct there, and Theorem~\ref{thm:common} keeps it.
+
+(b) \emph{Block-specific keys (everywhere else).} Now there are $2B$ discrete nuisance parameters, each informed by $K_b$ observations, and the profile estimator (A) is a Neyman--Scott incidental-parameter estimator: in every block it can choose the key that best aligns the covariate order with the noise, and the resulting bias in $\beta$ does not vanish as $B\to\infty$. Section~\ref{sec:profile} measures it: with $K=6$, $\tau^2=0.5$, $\sigma_X=1$ and the true $\beta=0.5$, the joint maximiser returns $0.70$ at $B=50$, $200$ and $800$ alike, and at $\beta=0$ it returns $\pm0.50$, whereas the marginal maximiser (B) is centred at the truth in every case. Theorem~\ref{thm:sep} says the key posterior never concentrates in this model, so the two ends of Lemma~\ref{lem:elbo} genuinely differ, and only (B) is a consistent target. This is why the theory of this note is written for the marginal likelihood: it is not a convenience for the proofs but the only one of the two classical targets that is consistent when keys are block-specific.
+
+(c) \emph{What the algorithm estimates.} By Lemma~\ref{lem:elbo}(iv) REPAIR's $\hat\beta$ is, to first order, the maximiser of $\log L_\rel(\beta)$ minus the smallest Kullback--Leibler distance from the mean-field family to the exact posterior of $(\bW,\bpi)$ at that $\beta$. The algorithm therefore targets (B), not (A); it is a variational EM for the marginal likelihood whose E-step is approximated in two ways, by the factorisation $q(\bW)\prod_bq(\bpi_X^{(b)})q(\bpi_S^{(b)})$ (the exact posterior couples the field and the two keys of a block) and by the continuous relaxation of $q(\bpi)$. The gap term in \eqref{eq:vfe} is non-negative and biases $\hat\beta$ only through its dependence on $\beta$; Remark~\ref{rem:eff}(d) identifies the concrete mechanism (the $\beta$-update sees $\E_q[\bpi_X]$ and $\E_q[\bpi_S]\E_q[\bW]$ separately), and the estimator of Section~\ref{sec:realistic} removes the gap by replacing the mean-field E-step with the exact per-block key posterior, which is what Theorem~\ref{thm:onestep} needs. Throughout, ``the target of REPAIR'' means $L_\rel$ in this sense: the leading term of what the algorithm maximises, and the quantity it would maximise exactly if its variational family contained the posterior.
+\end{remark}
+
 \subsection{Aligned form}\label{sec:aligned}
 
 Let $\bPi_X:=\mathrm{bdiag}(\bpi_X^{(1)},\dots,\bpi_X^{(B)})$ and $\bPi_S$ likewise, so that \eqref{eq:model} reads $\bY=\bPi_X\bX\beta+\bPi_S\bW+\beps$. Since $\bPi_S^\top\beps\overset{d}{=}\beps$ and is independent of $\bW$, multiplying by $\bPi_S^\top$ gives
@@ -105,7 +149,7 @@ The map $(\bPi_X,\bPi_S)\mapsto(\bPi_1,\bPi_2)$ is a bijection of block-diagonal
 \begin{equation}\label{eq:ml}
 (\hat\bPi_1,\hat\bPi_2):=\arg\min_{(\bPi_1',\bPi_2')}\ \big\|\mathbf P^\perp_{\bPi_1'}\,\bSig^{-1/2}\bPi_2'\bY\big\|^2,\qquad \mathbf P^\perp_{\bPi_1'}:=\bI-\mathbf G'(\mathbf G'^\top\mathbf G')^{-1}\mathbf G'^\top,\quad\mathbf G':=\bSig^{-1/2}\bPi_1'\bX,
 \end{equation}
-the residual sum of squares after regressing the whitened, re-ordered response on the $d$ whitened, re-ordered covariate columns. The aligned form is used only in Section~\ref{sec:common}; the separation and efficiency results of Sections~\ref{sec:sep}--\ref{sec:eff} are statements about the keys $(\bpi_X^{(b)},\bpi_S^{(b)})$ and about block sums, which the bijection leaves untouched.
+the residual sum of squares after regressing the whitened, re-ordered response on the $d$ whitened, re-ordered covariate columns. These are the keys of the joint maximisation (A) of Section~\ref{sec:targets}. The aligned form is used only in Section~\ref{sec:common}, the one setting in which (A) is a consistent target (Remark~\ref{rem:targets}); the separation and efficiency results of Sections~\ref{sec:sep}--\ref{sec:eff} are statements about the keys $(\bpi_X^{(b)},\bpi_S^{(b)})$ and about block sums, which the bijection leaves untouched.
 
 \subsection{The three estimators that are compared}\label{sec:estimators}
 
@@ -117,11 +161,7 @@ Write $\bSig^\ast_{bb'}$ for the $(b,b')$ block of $\bSig$ and $\bOm:=\bSig^{-1}
 \hat\beta_\agg:=\big(\mathbf S^\top\bV^{-1}\mathbf S\big)^{-1}\mathbf S^\top\bV^{-1}\bT,\qquad \mathbf I_\agg(\beta)=\E[\mathbf S^\top\bV^{-1}\mathbf S]=\tr(\bV^{-1}\bD)\,\bSig_X,
 \end{equation}
 with the covariance parameters estimated by maximum likelihood; here they are treated as known.
-\item[Marginal likelihood (the target of REPAIR).] Under Assumption~\ref{ass:keys} the released data have the likelihood
-\begin{equation}\label{eq:marglik}
-L_\rel(\beta):=\E_{\bpi}\Big[\phi_n\big(\bY;\ \bPi_X\bX\beta,\ \bPi_S\bSig_W\bPi_S^\top+\tau^2\bI\big)\Big],
-\end{equation}
-where $\phi_n(\cdot;\bm m,\mathbf C)$ is the $n$-dimensional Gaussian density and the expectation is over the $\prod_b(K_b!)^2$ equally likely key configurations. The covariance $\bPi_S\bSig_W\bPi_S^\top+\tau^2\bI$ in \eqref{eq:marglik} is the full $n\times n$ covariance of $\bY$ given the keys: its $(b,b')$ block is $\bpi_S^{(b)}(\bSig_W)_{bb'}\bpi_S^{(b')\top}+\tau^2\bI\,\mathbb 1\{b=b'\}$, so the dependence of the field \emph{between} blocks is kept in full, and the keys merely reorder rows and columns within blocks. \eqref{eq:marglik} is thus the exact likelihood of the released data, a mixture of $n$-dimensional Gaussians, not a product over blocks (the product over blocks is the composite likelihood \eqref{eq:composite} used for the asymptotic statement). REPAIR maximises a mean-field variational lower bound on \eqref{eq:marglik} with one factor $q(\bpi_X^{(b)})q(\bpi_S^{(b)})$ per block; the theory below concerns the maximiser $\hat\beta_\rel$ of \eqref{eq:marglik} itself, and the block-marginal composite version \eqref{eq:composite}, of which the variational scheme is the computational proxy. Its Fisher information matrix is $\mathbf I_\rel(\beta)$. When $d=1$ we write $I_\orc,I_\agg,I_\rel$ for the scalars.
+\item[Marginal likelihood (the target of REPAIR, Lemma~\ref{lem:elbo}).] Under Assumption~\ref{ass:keys} the released data have the likelihood $L_\rel(\beta)$ of \eqref{eq:marglik}, where $\phi_n(\cdot;\bm m,\mathbf C)$ in \eqref{eq:condlik} is the $n$-dimensional Gaussian density and the expectation is over the $\prod_b(K_b!)^2$ equally likely key configurations. The covariance $\bPi_S\bSig_W\bPi_S^\top+\tau^2\bI$ in \eqref{eq:marglik} is the full $n\times n$ covariance of $\bY$ given the keys: its $(b,b')$ block is $\bpi_S^{(b)}(\bSig_W)_{bb'}\bpi_S^{(b')\top}+\tau^2\bI\,\mathbb 1\{b=b'\}$, so the dependence of the field \emph{between} blocks is kept in full, and the keys merely reorder rows and columns within blocks. \eqref{eq:marglik} is thus the exact likelihood of the released data, a mixture of $n$-dimensional Gaussians, not a product over blocks (the product over blocks is the composite likelihood \eqref{eq:composite} used for the asymptotic statement). REPAIR maximises a mean-field variational lower bound on \eqref{eq:marglik} (Lemma~\ref{lem:elbo}) with one factor $q(\bpi_X^{(b)})q(\bpi_S^{(b)})$ per block; the theory below concerns the maximiser $\hat\beta_\rel$ of \eqref{eq:marglik} itself, and the block-marginal composite version \eqref{eq:composite}, of which the variational scheme is the computational proxy. Its Fisher information matrix is $\mathbf I_\rel(\beta)$. When $d=1$ we write $I_\orc,I_\agg,I_\rel$ for the scalars.
 \end{description}
 
 \section{Separation}\label{sec:sep}
@@ -222,7 +262,7 @@ a sum over blocks. Each summand is the logarithm of the \emph{exact} marginal li
 \end{assumption}
 
 \begin{remark}\label{rem:eff}
-(a) \emph{This is the claim behind the algorithm.} REPAIR is a variational approximation to the maximiser of \eqref{eq:marglik}; what Theorem~\ref{thm:eff} shows is that the target it approximates uses strictly more information than the areal GLS, by the factor $I_\rel/I_\agg$, and falls short of the oracle by exactly the information the keys carry. The variational scheme inherits this to the extent that its fixed point tracks the marginal maximiser; that is an empirical statement, checked in the simulations, not a theorem.
+(a) \emph{This is the claim behind the algorithm.} By Lemma~\ref{lem:elbo}, REPAIR maximises $\log L_\rel(\beta)$ minus a mean-field gap; what Theorem~\ref{thm:eff} shows is that the leading term uses strictly more information than the areal GLS, by the factor $I_\rel/I_\agg$, and falls short of the oracle by exactly the information the keys carry. The variational scheme inherits this to the extent that the gap in \eqref{eq:vfe} is flat in $\beta$ near the truth; how flat it is, is an empirical statement, checked in the simulations, not a theorem. It is \emph{not} a statement about the joint maximiser (A), which is inconsistent for block-specific keys (Remark~\ref{rem:targets}(b), Section~\ref{sec:profile}).
 (b) \emph{Where the gain lives.} Conditional on $\bW$ and in the covariate-key sub-case the blocks decouple and all three informations can be computed exactly for small $K$ by enumerating the $K!$ keys. For $d=1$, $K=6$, $\sigma_X=1$, $\tau^2=0.5$, per block:
 \begin{center}
 \begin{tabular}{ccccccc}\toprule
@@ -236,7 +276,7 @@ $\beta$ & $\beta/\tau$ & $I_\agg$ & $I_\rel$ & $I_\orc$ & $I_\rel/I_\agg$ & $I_\
 \end{center}
 At $\beta/\tau=0.35$ the re-linking floor of Theorem~\ref{thm:sep}(b) is $\pi^{-1}\arctan(2.83)=0.39$ per block, i.e.\ the keys are essentially unrecoverable, yet the released data carry twice the information of the block means. The released information rises from the areal floor to the oracle ceiling exactly as the key posterior sharpens (part (ii)).
 (c) \emph{Risk and utility are one object.} The posterior over the keys given the released data determines both the missing information $I_\orc-I_\rel$ and the re-linking probability. A steward who enlarges the blocks flattens that posterior, lowering risk and raising the missing information at once; the block size is the single dial of the risk--utility map.
-(d) \emph{A caution about the mean-field update.} REPAIR's update for $\beta$ has numerator $\sum_b\bX_b^\top\E_q[\bpi_X^{(b)}]^\top(\cdot)$ and denominator $\sum_b\bX_b^\top\E_q[\bpi_X^{(b)\top}\bpi_X^{(b)}]\bX_b=\sum_b\|\bX_b\|^2$ because $\bpi^\top\bpi=\bI$. When $q$ is flat, $\E_q[\bpi_X^{(b)}]=K_b^{-1}\bone\bone^\top$ and the numerator collapses to $\sum_bK_b^{-1}S_bT_b$, of expectation $B\beta$, against a denominator of expectation $n$: the update shrinks $\beta$ towards $\beta/K$. The exact marginal maximiser has no such defect (Lemma~\ref{lem:sums} shows the block sums alone identify $\beta$), and initialising or anchoring the variational scheme at $\hat\beta_\agg$ is the natural safeguard; this is a plausible explanation of the deterioration observed at large $K$ and low signal in the submitted simulations.
+(d) \emph{A caution about the mean-field update: where the gap of \eqref{eq:vfe} comes from.} REPAIR's update for $\beta$ has numerator $\sum_b\bX_b^\top\E_q[\bpi_X^{(b)}]^\top(\cdot)$ and denominator $\sum_b\bX_b^\top\E_q[\bpi_X^{(b)\top}\bpi_X^{(b)}]\bX_b=\sum_b\|\bX_b\|^2$ because $\bpi^\top\bpi=\bI$. When $q$ is flat, $\E_q[\bpi_X^{(b)}]=K_b^{-1}\bone\bone^\top$ and the numerator collapses to $\sum_bK_b^{-1}S_bT_b$, of expectation $B\beta$, against a denominator of expectation $n$: the update shrinks $\beta$ towards $\beta/K$. The exact marginal maximiser has no such defect (Lemma~\ref{lem:sums} shows the block sums alone identify $\beta$), and initialising or anchoring the variational scheme at $\hat\beta_\agg$ is the natural safeguard; this is a plausible explanation of the deterioration observed at large $K$ and low signal in the submitted simulations.
 (e) \emph{Nuisance parameters.} With $\bSig_W,\tau^2$ unknown, (i)--(ii) hold for the $(\beta,\Gamma)$ information matrices in the Loewner order; under fixed-domain sampling only microergodic combinations of $\Gamma$ are consistently estimable, which affects the nuisance, not $\beta$, whose identifiability Lemma~\ref{lem:sums} secures from block sums alone.
 \end{remark}
 
@@ -525,6 +565,28 @@ Figure~\ref{fig:betaratio} shows the table as ratio curves. Three things to take
 \label{fig:betaratio}
 \end{figure}
 
+\subsection{Joint maximisation over block-specific keys is inconsistent}\label{sec:profile}
+
+Remark~\ref{rem:targets}(b) claims that the profile estimator (A), which the submitted paper's recovery theorem analyses, is biased when the keys are block-specific, and that the bias does not vanish with $B$. Table~\ref{tab:profile} measures it in the cleanest setting: covariate key only, $W$ known (so the comparison isolates the keys), $K=6$, $\tau^2=0.5$, $x_{b,i}\sim N(0,1)$, keys uniform and independent across blocks, all $720$ keys of every block enumerated exactly and $\beta$ maximised on a grid of step $0.01$ over $[-1.5,1.5]$; $40$ replications. The two estimators use the same data: $\hat\beta_{\mathrm{prof}}$ maximises $\sum_b\max_{\bpi}\log L_b(\bpi,\beta)$, $\hat\beta_\rel$ maximises $\sum_b\log\E_{\bpi}L_b(\bpi,\beta)$.
+
+\begin{table}[ht]\centering\small
+\begin{tabular}{crcccc}\toprule
+true $\beta$ & $B$ & \multicolumn{2}{c}{joint maximisation (A)} & \multicolumn{2}{c}{marginal likelihood (B)}\\
+ & & mean & sd & mean & sd\\\midrule
+0    & 200 & $-0.08$ ($\overline{|\hat\beta|}=0.50$) & 0.49 & $-0.01$ & 0.05\\
+0.25 & 200 & 0.57 & 0.02 & 0.24 & 0.04\\
+0.5  & 200 & 0.71 & 0.02 & 0.50 & 0.03\\
+1    & 200 & 1.10 & 0.02 & 1.00 & 0.02\\\midrule
+0.5  &  50 & 0.70 & 0.04 & 0.49 & 0.06\\
+0.5  & 200 & 0.71 & 0.02 & 0.50 & 0.02\\
+0.5  & 800 & 0.71 & 0.01 & 0.50 & 0.01\\\bottomrule
+\end{tabular}
+\caption{Profile (joint-maximisation) and marginal estimators of $\beta$ with block-specific covariate keys, $K=6$, $\tau^2=0.5$, $W$ known; 40 replications, exact enumeration of the keys. At $\beta=0$ the joint maximiser returns $\pm0.50$ in every replication (the sign is arbitrary), because in each block some key aligns the covariate order with the noise.}
+\label{tab:profile}
+\end{table}
+
+The pattern is the incidental-parameter one: the bias of (A) is a fixed function of the signal level ($+0.50$ at $\beta=0$, $+0.32$ at $0.25$, $+0.21$ at $0.5$, $+0.10$ at $1$) with a standard deviation that shrinks like $B^{-1/2}$, so it is an inconsistency, not a small-sample effect; the marginal estimator is centred at the truth at every signal level, with a standard deviation that also shrinks like $B^{-1/2}$. At $\beta=1$ the key posterior is already fairly concentrated ($p^X=\pi^{-1}\arctan(\tau/\sqrt\Lambda)=0.20$ per block) and the two estimators approach each other, which is the common-key phenomenon of Remark~\ref{rem:targets}(a) appearing within a block. The script is \texttt{sims/simF\_profile\_vs\_marginal.py}.
+
 \section{Spatially correlated covariates: what changes in each result}\label{sec:spatialX}
 
 Referee~1 asks for covariates that are themselves spatially correlated. Everything above assumes $\bx_{b,i}$ i.i.d.; this section replaces that by a covariate \emph{field} and goes through the results one by one. One caveat governs the whole section: the covariate field is assumed independent of $W$, as in Assumption~\ref{ass:dgp}(iv). Under that assumption the model stays correctly specified and nothing below is a bias; what changes is information and risk. The dependent case, $g$ correlated with $W$, is the bias form of spatial confounding (Paciorek 2010; Hodges and Reich 2010), in which no estimator, oracle included, recovers $\beta$ without further assumptions; whether the free pairing makes it worse, by letting the key posterior absorb part of a smooth covariate signal into $W$, is left open (last item of the list at the end).
@@ -590,7 +652,7 @@ $\tfrac12$ i.i.d.\ $+\tfrac12$ exponential, range $0.5$ & 164.9 & 11.2 & 14.7\\\
 \section*{What remains to be done}
 \begin{enumerate}
 \item Verify conditions (C1)--(C2) of Theorem~\ref{thm:onestep} for the full marginal likelihood (Remark~\ref{rem:obstacle}): a decay-of-correlations argument for the key posterior. This is the one open theoretical item; everything else in the efficiency story is proved for the composite likelihood and checked numerically.
-\item Put the estimator of Section~\ref{sec:realistic} into the code (per-block key sampler, damped Newton from the areal fit, covariance parameters from the areal stage), check the variational relaxation against the chain and, at $K\le5$, against enumeration, and add the empirical per-record re-linking rate of the two-key adversary at realistic $K$ next to the floors.
+\item Put the estimator of Section~\ref{sec:realistic} into the code (per-block key sampler, damped Newton from the areal fit or from REPAIR's $\hat\beta$, covariance parameters from the areal stage); in the paper, replace the joint-maximisation framing of the methods section by Lemma~\ref{lem:elbo} and Remark~\ref{rem:targets}, check the variational relaxation against the chain and, at $K\le5$, against enumeration, and add the empirical per-record re-linking rate of the two-key adversary at realistic $K$ next to the floors.
 \item Remove the factor $K!$ (absorbed in $K^{K+2}$) from Theorem~\ref{thm:common} by using the decay of the covariance term in $k_2$, as in the submitted proof.
 \item The dependent case $g\not\perp W$ (Section~\ref{sec:spatialX}): whether the free pairing lets the key posterior absorb part of a smooth covariate signal into $W$, to be checked numerically before anything is claimed; and simulations with spatially correlated covariates in the three cases (S1)--(S3) against the floors \eqref{eq:pX-g} and Proposition~\ref{prop:floor-g}.
 \end{enumerate}
